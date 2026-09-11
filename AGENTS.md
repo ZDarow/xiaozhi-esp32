@@ -2,53 +2,53 @@
 
 ## Project
 
-XiaoZhi is an ESP-IDF C/C++ voice-assistant firmware supporting many chips, boards, displays, audio devices, and network transports. A build selects exactly one board implementation.
+XiaoZhi — прошивка голосового ассистента на ESP-IDF (C/C++), поддерживающая множество чипов, плат, дисплеев, аудио- устройств и сетевых транспортов. При сборке выбирается ровно одна реализация платы.
 
-Use ESP-IDF v6.1 when possible. The minimum supported SDK is ESP-IDF v6.0.1. IDF 5.x is not supported.
+Рекомендуется ESP-IDF v6.1. Минимальная поддерживаемая версия SDK — ESP-IDF v6.0.1. IDF 5.x не поддерживается.
 
 ## Architecture
 
-- `main/application.*`: main event loop, protocol lifecycle, and high-level behavior.
-- `main/device_state_machine.*`: legal runtime state transitions.
-- `main/boards/common/`: board interfaces and reusable hardware/network helpers.
-- `main/boards/**/`: board-specific pins, initialization, and build variants.
-- `main/audio/`: codecs, audio tasks, engines, wake words, and queues.
-- `main/protocols/`: transport-neutral API plus WebSocket and MQTT/UDP.
-- `main/display/` and `main/led/`: reusable UI implementations.
-- `main/mcp_server.*`: common device-side MCP tools and dispatch.
-- `main/Kconfig.projbuild`: board and feature configuration.
-- `main/CMakeLists.txt`: source, board, locale, font, and asset selection.
-- `scripts/build.py`: canonical board/variant build entry point.
+- `main/application.*` — главный цикл событий, жизненный цикл протокола и высокоуровное поведение.
+- `main/device_state_machine.*` — легальные переходы состояний во время выполнения.
+- `main/boards/common/` — интерфейсы плат и reusable-помощники железа/сети.
+- `main/boards/**/` — пины, инициализация и варианты сборки конкретных плат.
+- `main/audio/` — кодеки, аудио-задачи, движки, wake words и очереди.
+- `main/protocols/` — транспорт-нейтральный API плюс WebSocket и MQTT/UDP.
+- `main/display/` и `main/led/` — reusable-реализации UI.
+- `main/mcp_server.*` — общие MCP-инструменты на устройстве и диспетчер.
+- `main/Kconfig.projbuild` — конфигурация плат и функций.
+- `main/CMakeLists.txt` — выбор источников, локалей, шрифтов и ассетов.
+- `scripts/build.py` — каноническая точка входа сборки платы/варианта.
 
-Read the closest existing implementation before adding a new one. Prefer the narrowest owning layer; do not put board-specific behavior into core modules.
+Перед добавлением чего-либо читай ближайшую существующую реализацию. Предпочитай узкий owning слой; не клади поведение конкретной платы в ядро.
 
 ## Required Rules
 
-- Preserve unrelated worktree changes and keep patches focused.
-- A build must export exactly one board factory through `DECLARE_BOARD(...)`.
-- Never alter an existing board's pins to support different hardware. Add a uniquely named board or release variant; board identity affects OTA compatibility.
-- Core code depends on `Board` interfaces, never a concrete board class or board `config.h`.
-- Treat camera, backlight, display, LED, battery, and similar capabilities as optional.
-- Change runtime state through `Application::SetDeviceState()` and the state machine.
-- Callbacks may run outside the main task. Schedule application mutations with `Application::Schedule()` or event bits.
-- Do not block the main event loop or audio tasks. Avoid unbounded queues and repeated large allocations in audio paths.
-- Keep shared message semantics in `Protocol`; verify both transports when changing its contract.
-- Validate network input and preserve `cJSON` ownership. NVS keys are persistent API and require migration when changed.
-- Guard target-specific features with Kconfig/component rules. Do not assume every target has PSRAM or S3/P4 resources.
-- Do not manually edit generated/vendor output: `build/`, `releases/`, `managed_components/`, `components/`, `sdkconfig*`, `main/assets/lang_config.h`, or generated mmap headers.
-- Format only touched C/C++ files with the repository `.clang-format`; avoid unrelated mass formatting.
+- Сохраняй несвязанные изменения worktree и держи патчи сфокусированными.
+- Сборка должна экспортировать ровно одну фабрику плат через `DECLARE_BOARD(...)`.
+- Никогда не меняй пины существующей платы, чтобы поддержать другое железо. Добавляй уникальную плату или релиз-вариант; идентичность платы влияет на совместимость OTA.
+- Ядро зависит от интерфейсов `Board`, никогда — от конкретного класса платы или `config.h` платы.
+- Камера, подсветка, дисплей, LED, аккумулятор и аналогичные возможности — опциональны.
+- Изменяй состояние во время выполнения через `Application::SetDeviceState()` и машину состояний.
+- Колбэки могут выполняться вне главной задачи. Планируй мутации приложения через `Application::Schedule()` или биты событий.
+- Не блокируй главный цикл событий или аудио-задачи. Избегай неограниченных очередей и повторных крупных выделений в аудио-пути.
+- Держи общую семантику сообщений в `Protocol`; проверяй оба транспорта при изменении контракта.
+- Проверяй сетевой вход и сохраняй владение `cJSON`. Ключи NVS — постоянный API; при их изменении нужна миграция.
+- Защищай target-специфичные функции правилами Kconfig/COMPONENT. Не предполагай, что у каждого таргета есть PSRAM или ресурсы S3/P4.
+- Не редактируй вручную сгенерированные/вендоровские выходные: `build/`, `releases/`, `managed_components/`, `components/`, `sdkconfig*`, `main/assets/lang_config.h`, сгенерированные mmap-заголовки.
+- Форматируй только тронутые C/C++-файлы с помощью `.clang-format` репозитория; избегай массового форматирования несвязанных файлов.
 
 ## Boards and Configuration
 
-Board selection is a coupled chain:
+Выбор платы — это связанная цепочка:
 
-`config.json` -> `scripts/build.py` -> `main/Kconfig.projbuild` -> `main/CMakeLists.txt` -> board source and `config.h`.
+`config.json` -> `scripts/build.py` -> `main/Kconfig.projbuild` -> `main/CMakeLists.txt` -> исходники платы и `config.h`.
 
-When adding a board or variant, update every relevant link in that chain. Include a unique board identity, correct chip target, flash/partition settings, exactly one `DECLARE_BOARD`, and board documentation. Follow `docs/custom-board.md`.
+При добавлении платы или вариканта обновляй каждую соответствующую ссылку в этой цепочке. Включай уникальную идентичность платы, правильный чип-таргет, настройки flash/partition, ровно один `DECLARE_BOARD` и документацию по плате. Следуй `docs/custom-board.md`.
 
 ## Commands
 
-Source the intended ESP-IDF environment first:
+ Сначала подключи среду ESP-IDF:
 
 ```sh
 source /path/to/esp-idf/export.sh
@@ -56,38 +56,78 @@ idf.py --version
 ```
 
 ```sh
-# Discover exact board and variant names
+# Узнать точные названия плат и варикантов
 python3 scripts/build.py --list-boards
 
-# Canonical variant build
-python3 scripts/build.py <board-directory> --name <variant-name>
+# Каноническая сборка вариканта
+python3 scripts/build.py <директория-платы> --name <имя-вариканта>
 
-# Host-side build tests
+# Тесты на хосте
 python3 -m unittest discover -s scripts/tests -v
 
-# Format/check touched files
+# Форматировать/проверить тронутые файлы
 clang-format -i <files>
 clang-format --dry-run -Werror <files>
 ```
 
-The build script changes local `sdkconfig` and build state. Do not assume the build directory still represents a previous target.
+Скрипт сборки меняет локальные `sdkconfig` и состояние сборки. Не предполагай, что директория сборки всё ещё представляет предыдущий таргет.
 
 ## Validation
 
-- Board-only change: build affected variants and smoke-test changed hardware.
-- Core, common-board, audio, protocol, display, dependency, Kconfig, or CMake change: run host tests and build representative affected chip/network paths.
-- Protocol changes: verify WebSocket and MQTT/UDP when shared behavior changes.
-- Audio changes: verify capture, playback, wake/VAD, interruption, reconnect, and applicable AEC modes.
-- UI/assets changes: verify applicable no-display/OLED/LVGL paths and partition size.
-- Always report what was tested and what still needs physical hardware. A successful build is not hardware validation.
+- Изменение только платы: собери затронутые вариканты и протестируй изменённое железо.
+- Изменение ядра, common-плат, аудио, протоколов, дисплея, зависимостей, Kconfig или CMake: запускай host-тесты и собери репрезентативные чип/сетевые пути.
+- Изменения протоколов: проверяй WebSocket и MQTT/UDP при изменении общего поведения.
+- Изменения аудио: проверяй захват, воспроизведение, wake/VAD, прерывание, переподключение и применимые режимы AEC.
+- Изменения UI/ассетов: проверяй пути без-дисплея/OLED/LVGL и размер partition.
+- Всегда сообщай, что протестировано, и что всё ещё требует физического железа. Успешная сборка — не валидация железа.
 
 ## Authoritative Documentation
 
-- Overview and SDK policy: `README.md`
-- Board guide: `docs/custom-board.md`
-- Audio design: `main/audio/README.md`
-- Code style: `docs/code_style.md`
-- Protocols: `docs/websocket.md`, `docs/mqtt-udp.md`, `docs/mcp-protocol.md`
-- CI matrix: `.github/workflows/build.yml`
+- Обзор и политика SDK: `README.md`
+- Руководство по платам: `docs/custom-board.md`
+- Дизайн аудио: `main/audio/README.md`
+- Стиль кода: `docs/code_style.md`
+- Протоколы: `docs/websocket.md`, `docs/mqtt-udp.md`, `docs/mcp-protocol.md`
+- CI-матрица: `.github/workflows/build.yml`
 
-Keep detailed or fast-changing information in those files, not here. Add a nested `AGENTS.md` only when a subsystem needs specialized instructions.
+Держи подробную или быстро меняющуюся информацию в этих file, а не здесь. Добавляй вложенный `AGENTS.md` только когда подсистеме нужны специализированные инструкции.
+
+## Ограничения (Центральная Россия)
+
+Следующие правила действуют наряду с общими правилами конфигурации агента. Они имеют высший приоритет при противоречии.
+
+### Сеть и синхронизация
+
+- `git push` и синхронизация с удалёнными репозиториями — строго запрещены без явного указания или чёткого подтверждения Хозяина.
+- Загрузка проектов и публикация в сеть — запрещены без явного указания.
+- Не коммить `.env`, `*.pem`, `*.key`, `credentials.json`, `secrets.*`. Секреты — только через переменные окружения или `.env`-файл ( добавь в `.gitignore` при `git init`).
+- В логах и отчётах маскируй секреты: `sk-****abcd`.
+
+### Установка пакетов и управление системой
+
+- `apt install` всегда требует подтверждения (`ask`).
+- `sudo rm *`, `rm -rf /`, `mkfs`, `dd if=` и другие деструктивные операции — запрещены.
+- `systemctl restart/stop` для глобальных/системных сервисов — требуют подтверждения. Управление локальными сервисами проекта (docker-compose, dev-серверы, локальные демоны) — разрешено автономно.
+
+### Git
+
+- `git init`, `git add`, `git commit` — разрешены в автономном режиме, но только в рамках рабочей директории текущего проекта.
+- Перед крупными изменениями (рефакторинг, миграция, удаление файлов) — создай снапшот: `git commit -m "WIP: checkpoint before <описание>"`.
+- При критической ошибке — откатись к последнему рабочему состоянию (`git stash`, `git checkout`, `git reset`).
+- Commit messages — на русском, в повелительном наклонении.
+- Названия веток — на английском, kebab-case: `fix/auth-timeout`, `feature/docker-stats`.
+
+### Язык и стиль
+
+- Все ответы, комментарии, документация — на русском.
+- Имена переменных, функций, классов — на английском (`snake_case`, `CamelCase`).
+- Даты — ДД.ММ.ГГГГ, время — 24-часовой формат.
+
+### Самопроверка перед отчётом
+
+- Линтер: `clang-format --dry-run -Werror <files>` (или эквивалент для языка проекта).
+- Типы: аналог `mypy --strict` для соответствующего языка.
+- Тесты: `python3 -m unittest discover -s scripts/tests -v`.
+- Прочитай свой код глазами ревьюера — нет ли TODO, заглушек, `print()` для отладки, закомментированного кода?
+- Проверь `.gitignore` — не добавлено ли лишнего?
+- Если хотя бы один пункт провален — исправь и повтори проверку.
