@@ -1,46 +1,54 @@
-# Custom Board Guide
+# Руководство по кастомным платам
 
-This guide describes how to add a new board to the XiaoZhi AI voice assistant project. XiaoZhi AI supports 70+ ESP32-series boards; each one lives in its own directory under `main/boards/`.
+Это руководство описывает, как добавить новую плату в проект голосового помощника XiaoZhi AI.
+XiaoZhi AI поддерживает 70+ плат на базе ESP32; каждая находится в своей директории под `main/boards/`.
 
-## Important
+## Важно
 
-> **Warning**: for a custom board whose IO configuration differs from an existing board, never overwrite the original board's configuration. Always create a new board type - or use the `builds` array in `config.json` to produce a distinct firmware name with different `sdkconfig` macros. Use `python scripts/build.py [board-directory]` to build the firmware.
+> **Внимание**: для кастомной платы, чей IO-конфиг отличается от существующей платы, никогда не
+> перезаписывайте конфигурацию исходной платы. Всегда создавайте новый тип платы — либо
+> используйте массив `builds` в `config.json`, чтобы получить отдельное имя прошивки с
+> разными `sdkconfig`-макросами. Используйте `python scripts/build.py [board-directory]`
+> для сборки прошивки.
 >
-> Overwriting an existing board's configuration is dangerous because OTA updates may replace your custom firmware with the stock firmware for the original board. Every board must have a unique identity and its own firmware update channel.
+> Перезапись конфигурации существующей платы опасна, потому что OTA-обновления могут заменить
+> вашу кастомную прошивку на штатную прошивку для исходной платы. Каждая плата должна иметь
+> уникальную идентичность и собственный канал обновлений.
 
-## Directory Layout
+## Структура директории
 
-A board directory typically contains:
+Директория платы обычно содержит:
 
-- `xxx_board.cc` - board-level initialization and glue code.
-- `config.h` - pin assignments and board-level settings.
-- `config.json` - reported board type and release configuration consumed by CMake and `scripts/build.py`.
-- `README.md` - board-specific notes.
+- `xxx_board.cc` — инициализация на уровне платы и связующий код.
+- `config.h` — назначение пинов и настройки на уровне платы.
+- `config.json` — сообщаемый тип платы и конфигурация релизов, потребляемая CMake и `scripts/build.py`.
+- `README.md` — плато-специфичные заметки.
 
-Boards can live directly under `main/boards/` or be grouped by manufacturer under `main/boards/<manufacturer>/<board>/` (see [Manufacturer Sub-directories](#manufacturer-sub-directories) below).
+Платы могут находиться прямо под `main/boards/` или быть сгруппированы по производителям под
+`main/boards/<manufacturer>/<board>/` (см. [Поддиректории производителей](#поддиректории-производителей) ниже).
 
-## Steps
+## Шаги
 
-### 1. Create the Board Directory
+### 1. Создите директорию платы
 
-Create a new directory under `main/boards/` using the `[vendor]-[model]` naming style (e.g. `m5stack-tab5`):
+Создайте новую директорию под `main/boards/` с именованием `[vendor]-[model]` (например, `m5stack-tab5`):
 
 ```bash
 mkdir main/boards/my-custom-board
 ```
 
-### 2. Create the Configuration Files
+### 2. Создайте конфигурационные файлы
 
 #### config.h
 
-Define all hardware settings in `config.h`:
+Определите все аппаратные настройки в `config.h`:
 
-- Audio sample rates and I2S pin mapping.
-- Audio codec I2C address and pins.
-- Button and LED pins.
-- Display parameters and pins.
+- Частоты дискретизации аудио и сопоставление пинов I2S.
+- Адрес I2C и пины аудиокодека.
+- Пины кнопок и LED.
+- Параметры дисплея и пины.
 
-Example (from `lichuang-c3-dev`):
+Пример (из `lichuang-c3-dev`):
 
 ```c
 #ifndef _BOARD_CONFIG_H_
@@ -48,7 +56,7 @@ Example (from `lichuang-c3-dev`):
 
 #include <driver/gpio.h>
 
-// Audio
+// Аудио
 #define AUDIO_INPUT_SAMPLE_RATE  24000
 #define AUDIO_OUTPUT_SAMPLE_RATE 24000
 
@@ -63,10 +71,10 @@ Example (from `lichuang-c3-dev`):
 #define AUDIO_CODEC_I2C_SCL_PIN  GPIO_NUM_1
 #define AUDIO_CODEC_ES8311_ADDR  ES8311_CODEC_DEFAULT_ADDR
 
-// Buttons
+// Кнопки
 #define BOOT_BUTTON_GPIO        GPIO_NUM_9
 
-// Display
+// Дисплей
 #define DISPLAY_SPI_SCK_PIN     GPIO_NUM_3
 #define DISPLAY_SPI_MOSI_PIN    GPIO_NUM_5
 #define DISPLAY_DC_PIN          GPIO_NUM_6
@@ -89,7 +97,7 @@ Example (from `lichuang-c3-dev`):
 
 #### config.json
 
-`config.json` defines the compatibility-sensitive reported type and drives `scripts/build.py`:
+`config.json` определяет совместимый с OTA сообщаемый тип и управляет `scripts/build.py`:
 
 ```json
 {
@@ -107,51 +115,48 @@ Example (from `lichuang-c3-dev`):
 }
 ```
 
-**Fields**:
-- `type`: compatibility-sensitive board family reported by the firmware. Keep it stable after release.
-- `target`: target chip, must match the real hardware (`esp32`, `esp32s3`, `esp32c3`, `esp32c6`, `esp32p4`, ...).
-- `name`: compatibility-sensitive firmware variant name reported by release builds; typically matches `type`.
-- `sdkconfig_append`: extra sdkconfig lines merged into the defaults.
+**Поля:**
+- `type`: совместимый с OTA семейство плат, сообщаемое прошивкой. Держите стабильным после релиза.
+- `target`: целевой чип, должен соответствовать реальному оборудованию (`esp32`, `esp32s3`, `esp32c3`, `esp32c6`, `esp32p4`, ...).
+- `name`: совместимое с OTA имя варианта прошивки, сообщаемое в релизных сборках; обычно совпадает с `type`.
+- `sdkconfig_append`: дополнительные строки sdkconfig, объединяемые с defaults.
 
-Both `type` and `name` must contain only lowercase letters, digits, periods
-(`.`), and hyphens (`-`). Underscores, spaces, and uppercase letters are not
-allowed.
+И `type`, и `name` должны содержать только строчные буквы, цифры, точки (`.`) и дефисы (`-`).
+Подчёркивания, пробелы и заглавные буквы не допускаются.
 
-**Common `sdkconfig_append` entries**:
+**Часто используемые записи `sdkconfig_append`:**
 
 ```json
-// Flash size
+// Размер flash
 "CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y"
 "CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y"
 
-// Partition table
+// Таблица разделов
 "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/4m.csv\""
 "CONFIG_PARTITION_TABLE_CUSTOM_FILENAME=\"partitions/v2/8m.csv\""
 
-// Audio pipeline
-"CONFIG_USE_DEVICE_AEC=y"          // enable on-device AEC
+// Аудиопайплайн
+"CONFIG_USE_DEVICE_AEC=y"          // включить on-device AEC
 ```
 
-The project defaults to 16MB flash and `partitions/v2/16m.csv` on applicable
-targets. Do not repeat values that already match the effective project and
-target defaults; use `sdkconfig_append` only for actual board-specific
-overrides.
+Проект по умолчанию использует 16 МБ flash и `partitions/v2/16m.csv` на применимых таргетах.
+Не повторяйте значения, которые уже совпадают с эффективными defaults проекта и таргета;
+используйте `sdkconfig_append` только для реальных плато-специфичных переопределений.
 
-Do not select a language or a specific wake word in a board `config.json`.
-Those are user build options and must be configured consistently through
-`menuconfig` or build-script parameters so CLI, agent, and online builds can
-share the same interface.
+Не выбирайте язык или конкретное слово активации в `config.json` платы. Это параметры сборки
+пользователя и должны настраиваться согласованно через `menuconfig` или параметры скрипта
+сборки, чтобы CLI, агент и онлайн-сборки могли использовать один и тот же интерфейс.
 
-### 3. Implement the Board Class
+### 3. Реализуйте класс платы
 
-Create `my_custom_board.cc` containing the board-level implementation.
+Создайте `my_custom_board.cc` с реализацией на уровне платы.
 
-A basic board class has:
+Базовый класс платы имеет:
 
-1. **Class declaration**: derive from `WifiBoard` or `Ml307Board`.
-2. **Initialization helpers**: I2C, display, buttons, IoT/MCP tools, etc.
-3. **Virtual overrides**: `GetAudioCodec()`, `GetDisplay()`, `GetBacklight()`, ...
-4. **Board registration**: `DECLARE_BOARD(ClassName)`.
+1. **Объявление класса**: наследуйтесь от `WifiBoard` или `Ml307Board`.
+2. **Вспомогательные функции инициализации**: I2C, дисплей, кнопки, IoT/MCP-инструменты и т.д.
+3. **Виртуальные переопределения**: `GetAudioCodec()`, `GetDisplay()`, `GetBacklight()`, ...
+4. **Регистрация платы**: `DECLARE_BOARD(ClassName)`.
 
 ```cpp
 #include "wifi_board.h"
@@ -245,7 +250,7 @@ private:
     }
 
     void InitializeTools() {
-        // Register MCP tools here; see docs/mcp-usage.md.
+        // Регистрируйте MCP-инструменты здесь; см. docs/mcp-usage.md.
     }
 
 public:
@@ -287,11 +292,11 @@ public:
 DECLARE_BOARD(MyCustomBoard);
 ```
 
-### 4. Hook Up the Build System
+### 4. Подключение к системе сборки
 
-#### Add a Kconfig entry
+#### Добавьте запись Kconfig
 
-In `main/Kconfig.projbuild`, add an entry to the `choice BOARD_TYPE` block:
+В `main/Kconfig.projbuild` добавьте запись в блок `choice BOARD_TYPE`:
 
 ```kconfig
 choice BOARD_TYPE
@@ -300,80 +305,80 @@ choice BOARD_TYPE
     help
         Board type.
 
-    # ... other entries ...
+    # ... другие записи ...
 
     config BOARD_TYPE_MY_CUSTOM_BOARD
         bool "My Custom Board"
-        depends on IDF_TARGET_ESP32S3  # pick the matching target
+        depends on IDF_TARGET_ESP32S3  # выберите соответствующий таргет
 endchoice
 ```
 
-Notes:
-- The identifier must be uppercase and underscore-separated.
-- `depends on` restricts the entry to the correct target (`IDF_TARGET_ESP32S3`, `IDF_TARGET_ESP32C3`, ...).
-- The label can be localized.
+Примечания:
+- Идентификатор должен быть в верхнем регистре с подчёркиваниями.
+- `depends on` ограничивает запись соответствующим таргетом (`IDF_TARGET_ESP32S3`, `IDF_TARGET_ESP32C3`, ...).
+- Метка может быть локализована.
 
-#### Add a branch in CMakeLists.txt
+#### Добавьте ветку в CMakeLists.txt
 
-Open `main/CMakeLists.txt` and extend the board-type chain:
+Откройте `main/CMakeLists.txt` и расширьте цепочку типов плат:
 
 ```cmake
 elseif(CONFIG_BOARD_TYPE_MY_CUSTOM_BOARD)
     set(BOARD_DIR "my-custom-board")
-    set(BUILTIN_TEXT_FONT font_puhui_basic_20_4)     # pick a font for the display
+    set(BUILTIN_TEXT_FONT font_puhui_basic_20_4)     # выберите шрифт для дисплея
     set(BUILTIN_ICON_FONT font_awesome_20_4)
-    set(DEFAULT_EMOJI_COLLECTION twemoji_64)         // optional, for emoji display
+    set(DEFAULT_EMOJI_COLLECTION twemoji_64)         # необязательно, для эмодзи
 ```
 
-**Font and emoji guidance**:
+**Руководство по шрифтам и эмодзи:**
 
-Pick a font size that matches the display resolution:
-- Small (128x64 OLED): `font_puhui_basic_14_1` / `font_awesome_14_1`
-- Small-medium (240x240): `font_puhui_basic_16_4` / `font_awesome_16_4`
-- Medium (240x320): `font_puhui_basic_20_4` / `font_awesome_20_4`
-- Large (480x320+): `font_puhui_basic_30_4` / `font_awesome_30_4`
+Выбирайте размер шрифта, соответствующий разрешению дисплея:
+- Маленький (128x64 OLED): `font_puhui_basic_14_1` / `font_awesome_14_1`
+- Маленький-средний (240x240): `font_puhui_basic_16_4` / `font_awesome_16_4`
+- Средний (240x320): `font_puhui_basic_20_4` / `font_awesome_20_4`
+- Большой (480x320+): `font_puhui_basic_30_4` / `font_awesome_30_4`
 
-Emoji collections:
-- `twemoji_32` - 32x32 pixels (small screens).
-- `twemoji_64` - 64x64 pixels (large screens).
+Коллекции эмодзи:
+- `twemoji_32` — 32x32 пикселя (маленькие экраны).
+- `twemoji_64` — 64x64 пикселя (большие экраны).
 
-### 5. Build and Flash
+### 5. Сборка и прошивка
 
-#### Option A - use `idf.py` manually
+#### Вариант A — использовать `idf.py` вручную
 
-1. Set the target chip (first time, or when switching targets):
+1. Установите целевой чип (в первый раз, или при смене таргета):
    ```bash
    idf.py set-target esp32s3     # ESP32-S3
    idf.py set-target esp32c3     # ESP32-C3
    idf.py set-target esp32       # ESP32
    ```
 
-2. Clean stale configuration:
+2. Очистите устаревшую конфигурацию:
    ```bash
    idf.py fullclean
    ```
 
-3. Select the board via menuconfig:
+3. Выберите плату через menuconfig:
    ```bash
    idf.py menuconfig
    ```
-   Navigate to `Xiaozhi Assistant -> Board Type` and choose your board.
+   Перейдите в `Xiaozhi Assistant -> Board Type` и выберите свою плату.
 
-4. Build and flash:
+4. Сборка и прошивка:
    ```bash
    idf.py build
    idf.py flash monitor
    ```
 
-#### Option B - use `build.py` (recommended)
+#### Вариант B — использовать `build.py` (рекомендуется)
 
-If the board directory contains a `config.json`, you can configure and build it automatically:
+Если директория платы содержит `config.json`, можно автоматически настроить и собрать:
 
 ```bash
 python scripts/build.py my-custom-board
 ```
 
-Language and wake-word selection are user build options:
+Выбор языка и слова активации — параметры сборки пользователя:
 
 ```bash
 python scripts/build.py my-custom-board \
@@ -381,13 +386,13 @@ python scripts/build.py my-custom-board \
   --wake-word wn9_jarvis_tts
 ```
 
-`--language` accepts a locale listed under `main/assets/locales/`.
-`--wake-word` accepts an ESP-SR model name, `nihaoxiaozhi` (which selects the
-compatible model for the target), or `disabled`. ESP32-C3/C5/C6 targets support
-WakeNet9s (`wn9s_*`) models; ESP32-S3/P4/S31 builds automatically use the AFE
-wake-word engine.
+`--language` принимает локаль, перечисленную в `main/assets/locales/`.
+`--wake-word` принимает имя модели ESP-SR, `nihaoxiaozhi` (которое выбирает
+совместимую модель для таргета), или `disabled`. Целевые ESP32-C3/C5/C6 поддерживают
+модели WakeNet9s (`wn9s_*`); сборки ESP32-S3/P4/S31 автоматически используют
+движок активации на базе AFE.
 
-Query the accepted values in text or machine-readable form:
+Запросите допустимые значения в текстовом или машинно-читаемом виде:
 
 ```bash
 python scripts/build.py --list-languages
@@ -396,33 +401,38 @@ python scripts/build.py --list-wake-words
 python scripts/build.py --list-wake-words --json
 ```
 
-The wake-word list is read from the currently resolved ESP-SR component, so
-run `idf.py reconfigure` first if `managed_components/` has not been populated.
+Список слов активации читается из разрешённого в данный момент компонента ESP-SR, поэтому
+сначала выполните `idf.py reconfigure`, если `managed_components/` ещё не заполнена.
 
-The script:
-- Prints help when run without arguments. Use `--list-boards` to list board
-  types and variants.
-- Prompts for a variant when the selected board has multiple builds. In
-  non-interactive environments, pass `--name <variant>`.
-- Reads `target` from `config.json`, cleans an existing build directory only
-  when its target differs, then configures the target, board name, defaults,
-  and selected build's `sdkconfig_append` in one `idf.py reconfigure` call.
-  The following `idf.py build` reuses that configuration.
-- Passes the selected build's `name` as the reported firmware variant name.
-- Builds `build/merged-binary.bin` without creating a ZIP by default. Pass
-  `--zip` to recreate `releases/v<version>_<name>.zip`.
+Скрипт:
+- Выводит справку при запуске без аргументов. Используйте `--list-boards`, чтобы перечислить
+  типы и варианты плат.
+- Запрашивает вариант, когда выбранная плата имеет несколько сборок. В неинтерактивных
+  средах передайте `--name <variant>`.
+- Читает `target` из `config.json`, очищает существующую директорию сборки только
+  при изменении таргета, затем настраивает таргет, имя платы, defaults и `sdkconfig_append`
+  выбранной сборки в одном вызове `idf.py reconfigure`. Последующий `idf.py build`
+  переиспользует эту конфигурацию.
+- Передаёт `name` выбранной сборки как сообщаемое имя варианта прошивки.
+- Собирает `build/merged-binary.bin` без создания ZIP по умолчанию. Передайте `--zip`,
+  чтобы воссоздать `releases/v<version>_<name>.zip`.
 
-### 6. Write the README
+### 6. Напишите README
 
-In `README.md`, describe the board, hardware requirements, build instructions, and any special notes.
+В `README.md` опишите плату, аппаратные требования, инструкции по сборке и любые специальные заметки.
 
-## Manufacturer Sub-directories
+## Поддиректории производителей
 
-Boards can be grouped by manufacturer under `main/boards/<manufacturer>/<board>/`. This is the recommended layout when a single vendor ships several variants - for example `main/boards/waveshare/esp32-p4-nano/` or `main/boards/lceda-course-examples/eda-tv-pro/`.
+Платы могут быть сгруппированы по производителям под `main/boards/<manufacturer>/<board>/`.
+Это рекомендуемый макет, когда один поставщик поставляет несколько вариантов — например,
+`main/boards/waveshare/esp32-p4-nano/` или `main/boards/lceda-course-examples/eda-tv-pro/`.
 
-For a board in a manufacturer sub-directory, add the same value to `config.json`, for example `"manufacturer": "waveshare"`. The firmware reports it as `board.manufacturer` together with `board.type` and `board.name`. Flat community boards without this field report an empty manufacturer string.
+Для платы в поддиректории производителя добавьте то же значение в `config.json`,
+например `"manufacturer": "waveshare"`. Прошивка сообщает его как `board.manufacturer`
+вместе с `board.type` и `board.name`. Плоские community-платы без этого поля сообщают
+пустую строку manufacturer.
 
-Set `BOARD_DIR` to the complete path relative to `main/boards/`:
+Установите `BOARD_DIR` на полный путь относительно `main/boards/`:
 
 ```cmake
 elseif(CONFIG_BOARD_TYPE_WAVESHARE_ESP32_P4_NANO)
@@ -432,85 +442,94 @@ elseif(CONFIG_BOARD_TYPE_WAVESHARE_ESP32_P4_NANO)
     set(DEFAULT_EMOJI_COLLECTION twemoji_64)
 ```
 
-The build system loads sources from `main/boards/${BOARD_DIR}/` and reads the reported board type from that directory's `config.json`. If `config.json` or its top-level `type` is absent, the full `BOARD_DIR` with `/` replaced by `-` is used as the fallback type.
+Система сборки загружает источники из `main/boards/${BOARD_DIR}/` и читает сообщаемый тип
+платы из `config.json` этой директории. Если `config.json` или его верхнеуровневый `type`
+отсутствуют, полный `BOARD_DIR` с заменой `/` на `-` используется как fallback-тип.
 
-Rules of thumb:
-- Use the manufacturer layout when you have two or more boards from the same vendor that share drivers, assets, or documentation.
-- Use the flat layout for one-off boards and community examples.
-- Directory names use lowercase with dashes (e.g. `waveshare`, `lceda-course-examples`).
+Правила:
+- Используйте макет производителя, когда есть две и более платы от одного и того же
+  поставщика, которые разделяют драйверы, ассеты или документацию.
+- Используйте плоский макет для одиночных плат и community-примеров.
+- Имена директорий — строчные с дефисами (например, `waveshare`, `lceda-course-examples`).
 
-## Common Board Components
+## Общие компоненты плат
 
-Several reusable components live in `main/boards/common/`. You can include them directly from your board class:
+Несколько переиспользуемых компонентов находятся в `main/boards/common/`. Их можно включить
+прямо из класса платы:
 
-### Display drivers
+### Драйверы дисплеев
 
-Supported LCD families include:
+Поддерживаемые семейства LCD:
 - ST7789 (SPI)
 - ILI9341 (SPI)
 - SH8601 (QSPI)
-- and many more.
+- и многие другие.
 
-### Audio codecs
+### Аудиокодеки
 
-- `Es8311AudioCodec` (most common)
+- `Es8311AudioCodec` (самый распространённый)
 - `Es8374AudioCodec`
 - `Es8388AudioCodec`
 - `Es8389AudioCodec`
-- `BoxAudioCodec` (ES7210 mic array + codec combo used on ESP-Box boards)
-- `NoAudioCodec` (direct I2S without external codec)
-- `DummyAudioCodec` (placeholder for boards without audio)
+- `BoxAudioCodec` (комбо микрофонного массива ES7210 + кодек, используемое на платах ESP-Box)
+- `NoAudioCodec` (прямой I2S без внешнего кодека)
+- `DummyAudioCodec` (заглушка для плат без аудио)
 
-### Power management
+### Управление питанием
 
-- `Axp2101` power management IC helpers.
-- `Sy6970` battery charger helpers.
-- `AdcBatteryMonitor` - simple ADC-based battery voltage monitor.
-- `PowerSaveTimer` / `SleepTimer` - helpers for light-sleep scheduling.
+- Вспомогательные функции PMIC `Axp2101`.
+- Вспомогательные функции зарядного устройства `Sy6970`.
+- `AdcBatteryMonitor` — простой монитор напряжия батареи на базе АЦП.
+- `PowerSaveTimer` / `SleepTimer` — вспомогательные функции для планирования light-sleep.
 
-### Networking
+### Сеть
 
-- `WifiBoard` - WiFi-only base class.
-- `Ml307Board` / `Nt26Board` - 4G modem base classes.
-- `DualNetworkBoard` - switchable WiFi / 4G base class.
-- `RndisBoard` - RNDIS-over-USB networking (ESP32-S3 / ESP32-P4).
-- `EspVideo` helpers for ESP-Video on ESP32-S3 / ESP32-P4.
+- `WifiBoard` — базовый класс для Wi-Fi.
+- `Ml307Board` / `Nt26Board` — базовые классы для 4G-модемов.
+- `DualNetworkBoard` — переключаемый базовый класс Wi-Fi / 4G.
+- `RndisBoard` — сеть RNDIS-over-USB (ESP32-S3 / ESP32-P4).
+- Вспомогательные функции `EspVideo` для ESP-Video на ESP32-S3 / ESP32-P4.
 
-### Input helpers
+### Вспомогательные функции ввода
 
-- `Button` - standard push buttons (click, long-press, multi-click).
-- `Knob` - rotary encoder wrapper.
-- `PressToTalkMcpTool` - push-to-talk tool that registers itself through MCP.
-- `SystemReset` - helper that performs a safe factory reset when a button is held at boot.
+- `Button` — стандартные кнопки (клик, долгое нажатие, многократные клики).
+- `Knob` — обёртка для энкодера.
+- `PressToTalkMcpTool` — инструмент push-to-talk, регистрирующийся через MCP.
+- `SystemReset` — вспомогательная функция, выполняющая безопасный factory reset при удержании кнопки при загрузке.
 
-### MCP integration
+### Интеграция MCP
 
-Any board can register custom tools - speaker control, screen brightness, battery readout, light control, etc. See [MCP IoT control usage](./mcp-usage.md).
+Любая плата может регистрировать кастомные инструменты — управление динамиком, яркость экрана,
+чтение батареи, управление светом и т.д. См. [Использование MCP для IoT-управления](./mcp-usage.md).
 
-## Board Class Hierarchy
+## Иерархия классов плат
 
-- `Board` - base class
-  - `WifiBoard` - WiFi-connected board
-  - `Ml307Board` / `Nt26Board` - 4G modem boards
-  - `DualNetworkBoard` - WiFi + 4G switchable board
-  - `RndisBoard` - RNDIS-over-USB board
+- `Board` — базовый класс
+  - `WifiBoard` — плата с Wi-Fi
+  - `Ml307Board` / `Nt26Board` — платы с 4G-модемом
+  - `DualNetworkBoard` — переключаемая плата Wi-Fi + 4G
+  - `RndisBoard` — плата RNDIS-over-USB
 
-## Tips
+## Советы
 
-1. **Start from a similar board** - copying and tweaking an existing board is usually faster than starting from scratch.
-2. **Bring up incrementally** - get the display up first, then audio, then the full stack.
-3. **Double check pin assignments** - every pin defined in `config.h` must match your schematic.
-4. **Check hardware compatibility** - especially codec / PMIC / touch controller combinations.
+1. **Начинайте с похожей платы** — копирование и доработка существующей платы обычно быстрее,
+   чем создание с нуля.
+2. **Поднимайте поэтапно** — сначала запустите дисплей, затем аудио, затем весь стек.
+3. **Дважды проверьте назначение пинов** — каждый пин, определённый в `config.h`, должен
+   соответствовать вашей схеме.
+4. **Проверьте аппаратную совместимость** — особенно комбинации кодека / PMIC / контроллера
+   тачскрина.
 
-## Troubleshooting
+## Устранение неполадок
 
-1. **Display looks wrong** - verify SPI configuration, mirroring, and color inversion.
-2. **No audio** - check I2S wiring, PA enable pin, and codec I2C address.
-3. **Cannot connect to WiFi** - re-check WiFi credentials and provisioning method.
-4. **Cannot reach the server** - verify the WebSocket / MQTT endpoint configuration.
+1. **Дисплей отображается неправильно** — проверьте SPI-конфигурацию, зеркалирование и
+   инверсию цвета.
+2. **Нет аудио** — проверьте I2S-проводку, пин включения УУ, адрес I2C кодека.
+3. **Не удаётся подключиться к Wi-Fi** — перепроверьте учётные данные Wi-Fi и метод провайдинга.
+4. **Не удаётся достичь сервера** — проверьте конфигурацию конечных точек WebSocket / MQTT.
 
-## References
+## Ссылки
 
-- ESP-IDF documentation: https://docs.espressif.com/projects/esp-idf/
-- LVGL documentation: https://docs.lvgl.io/
-- ESP-SR documentation: https://github.com/espressif/esp-sr
+- ESP-IDF документация: https://docs.espressif.com/projects/esp-idf/
+- LVGL документация: https://docs.lvgl.io/
+- ESP-SR документация: https://github.com/espressif/esp-sr

@@ -4,6 +4,7 @@ ARG IDF_IMAGE=espressif/idf:release-v6.1
 FROM ${IDF_IMAGE}
 
 ARG FIRMWARE_SOURCE_REVISION=unknown
+# NOTE: для адаптации под Центральную Россию заменить на российский форк (например, gitlab.com/xiaozhi-ru/xiaozhi-esp32)
 ARG FIRMWARE_SOURCE_URL=https://github.com/78/xiaozhi-esp32
 
 LABEL org.opencontainers.image.title="XiaoZhi firmware builder" \

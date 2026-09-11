@@ -1,26 +1,27 @@
-# WebSocket Communication Protocol
+# Протокол WebSocket-связи
 
-This document describes the WebSocket communication protocol between the device and the server, based on the current code. When implementing a server, please cross-check with the actual implementation.
+Этот документ описывает протокол WebSocket-связи между устройством и сервером, основанный на
+текущем коде. При реализации сервера проверяйте всё с реальной реализацией.
 
 ---
 
-## 1. Overall Flow
+## 1. Общий поток
 
-1. **Device initialization**
-   - The device boots and initializes `Application`:
-     - Initializes the audio codec, display, LEDs, etc.
-     - Connects to the network.
-     - Creates a WebSocket protocol instance (`WebsocketProtocol`) that implements the `Protocol` interface.
-   - Enters the main loop and waits for events (audio input, audio output, scheduled tasks, etc.).
+1. **Инициализация устройства**
+   - Устройство загружается и инициализирует `Application`:
+     - Инициализирует аудиокодек, дисплей, светодиоды и т.д.
+     - Подключается к сети.
+     - Создаёт экземпляр протокола WebSocket (`WebsocketProtocol`), реализующий интерфейс `Protocol`.
+   - Входит в главный цикл и ждёт событий (аудиоввод, аудиовывод, отложенные задачи и т.д.).
 
-2. **Opening the WebSocket connection**
-   - When the device needs to start a voice session (wake-up, button press, etc.), it calls `OpenAudioChannel()`:
-     - Reads the WebSocket URL from settings.
-     - Sets the request headers (`Authorization`, `Protocol-Version`, `Device-Id`, `Client-Id`).
-     - Calls `Connect()` to establish the WebSocket connection.
+2. **Открытие WebSocket-соединения**
+   - Когда устройство должно начать голосовую сессию (активация, нажатие кнопки и т.д.), оно вызывает `OpenAudioChannel()`:
+     - Читает URL WebSocket из настроек.
+     - Устанавливает заголовки запроса (`Authorization`, `Protocol-Version`, `Device-Id`, `Client-Id`).
+     - Вызывает `Connect()` для установки WebSocket-соединения.
 
-3. **Device sends a "hello" message**
-   - Once connected, the device sends a JSON message. Example:
+3. **Устройство отправляет сообщение "hello"**
+   - После подключения устройство отправляет JSON-сообщение. Пример:
    ```json
    {
      "type": "hello",
@@ -45,14 +46,14 @@ This document describes the WebSocket communication protocol between the device 
      }
    }
    ```
-   - `features` is optional and generated from compile-time configuration. For example, `"mcp": true` means the device supports MCP, and `"aec": true` is emitted when `CONFIG_USE_SERVER_AEC` is enabled.
-   - `"glyph_push": true` and `text_font` advertise the optional dynamic text-glyph extension. See [Dynamic Text Glyph Push Extension](glyph-push.md).
-   - `frame_duration` matches `OPUS_FRAME_DURATION_MS` (typically 60 ms).
+   - `features` необязательно и генерируется из конфигурации времени компиляции. Например, `"mcp": true` означает поддержку MCP, а `"aec": true` отправляется, когда включён `CONFIG_USE_SERVER_AEC`.
+   - `"glyph_push": true` и `text_font` рекламируют необязательное расширение динамической подачи глифов текста. См. [Расширение динамической подачи глифов текста](glyph-push.md).
+   - `frame_duration` соответствует `OPUS_FRAME_DURATION_MS` (обычно 60 мс).
 
-4. **Server replies with "hello"**
-   - The device waits for a JSON message whose `"type"` is `"hello"` and whose `"transport"` is `"websocket"`.
-   - The server may include a `session_id`; the device will store it.
-   - Example:
+4. **Сервер отвечает "hello"**
+   - Устройство ждёт JSON-сообщение, где `"type"` равно `"hello"`, а `"transport"` равно `"websocket"`.
+   - Сервер может включить `session_id`; устройство сохраняет его.
+   - Пример:
    ```json
    {
      "type": "hello",
@@ -66,83 +67,83 @@ This document describes the WebSocket communication protocol between the device 
      }
    }
    ```
-   - If `transport` matches, the device marks the audio channel as opened.
-   - If no valid hello arrives within the timeout (default 10 seconds), the connection is considered failed and the network error callback is fired.
+   - Если `transport` совпадает, устройство помечает аудиоканал как открытый.
+   - Если допустимый hello не приходит в течение таймаута (по умолчанию 10 секунд), соединение считается неудавшимся, и вызывается обратный вызов сетевой ошибки.
 
-5. **Subsequent exchanges**
-   - Two kinds of data are sent in either direction:
-     1. **Binary audio data** (Opus encoded)
-     2. **Text JSON messages** (chat state, TTS/STT events, MCP messages, etc.)
+5. **Последующие обмены**
+   - Два типа данных отправляются в обоих направлениях:
+     1. **Бинарные аудиоданные** (Opus-кодированные)
+     2. **Текстовые JSON-сообщения** (состояние чата, события TTS/STT, сообщения MCP и т.д.)
 
-   - In the code, the receive callback splits traffic as follows:
+   - В коде обратный вызов приёма разделяет трафик следующим образом:
      - `OnData(...)`:
-       - If `binary` is `true`, the payload is treated as an Opus frame and decoded.
-       - If `binary` is `false`, the payload is parsed as JSON and dispatched by `type`.
+       - Если `binary` равно `true`, полезные данные обрабатываются как кадр Opus и декодируются.
+       - Если `binary` равно `false`, полезные данные разбираются как JSON и диспатчатся по `type`.
 
-   - When the server or network drops, `OnDisconnected()` fires:
-     - The device invokes `on_audio_channel_closed_()` and eventually returns to the idle state.
+   - Когда сервер или сеть разрывают соединение, вызывается `OnDisconnected()`:
+     - Устройство вызывает `on_audio_channel_closed_()` и в конечном итоге возвращается в состояние простоя.
 
-6. **Closing the WebSocket connection**
-   - When the device wants to end the session, it calls `CloseAudioChannel()` to tear down the socket and returns to idle.
-   - The same callback chain runs if the server closes the socket first.
-
----
-
-## 2. Common Request Headers
-
-When establishing the WebSocket connection, the device sets the following headers:
-
-- `Authorization`: access token, usually formatted as `"Bearer <token>"`.
-- `Protocol-Version`: the protocol version number, matching the `version` field in the hello message.
-- `Device-Id`: the physical MAC address of the device.
-- `Client-Id`: a software-generated UUID (reset when NVS is erased or the full firmware is re-flashed).
-
-These headers are sent with the WebSocket handshake; the server can use them for authentication or bookkeeping.
+6. **Закрытие WebSocket-соединения**
+   - Когда устройство хочет завершить сессию, оно вызывает `CloseAudioChannel()` для разрыва сокета и возвращается в состояние простоя.
+   - Та же цепочка обратных вызовов выполняется, если сервер закрывает сокет первым.
 
 ---
 
-## 3. Binary Protocol Versions
+## 2. Общие заголовки запросов
 
-The device supports several binary protocol versions, selected by the `version` field in settings:
+При установке WebSocket-соединения устройство устанавливает следующие заголовки:
 
-### 3.1 Version 1 (default)
-Raw Opus frames with no extra metadata. The WebSocket layer already distinguishes text and binary frames.
+- `Authorization`: токен доступа, обычно в формате `"Bearer <token>"`.
+- `Protocol-Version`: номер версии протокола, соответствующий полю `version` в сообщении hello.
+- `Device-Id`: физический MAC-адрес устройства.
+- `Client-Id`: UUID, сгенерированный программно (сбрасывается при стирании NVS или полной перепрошивке).
 
-### 3.2 Version 2
-Uses the `BinaryProtocol2` structure:
+Эти заголовки отправляются с WebSocket-рукопожатием; сервер может использовать их для аутентификации или бухгалтерского учёта.
+
+---
+
+## 3. Версии бинарного протокола
+
+Устройство поддерживает несколько версий бинарного протокола, выбираемых полем `version` в настройках:
+
+### 3.1 Версия 1 (по умолчанию)
+Сырые кадры Opus без дополнительных метаданных. Уровень WebSocket уже различает текстовые и бинарные кадры.
+
+### 3.2 Версия 2
+Использует структуру `BinaryProtocol2`:
 ```c
 struct BinaryProtocol2 {
-    uint16_t version;        // protocol version
-    uint16_t type;           // message type (0: OPUS, 1: JSON)
-    uint32_t reserved;       // reserved
-    uint32_t timestamp;      // timestamp in milliseconds (useful for server-side AEC)
-    uint32_t payload_size;   // payload size in bytes
-    uint8_t payload[];       // payload
+    uint16_t version;        // версия протокола
+    uint16_t type;           // тип сообщения (0: OPUS, 1: JSON)
+    uint32_t reserved;       // зарезервировано
+    uint32_t timestamp;      // временная метка в миллисекундах (полезно для серверного AEC)
+    uint32_t payload_size;   // размер полезной нагрузки в байтах
+    uint8_t payload[];       // полезные данные
 } __attribute__((packed));
 ```
 
-### 3.3 Version 3
-Uses the `BinaryProtocol3` structure:
+### 3.3 Версия 3
+Использует структуру `BinaryProtocol3`:
 ```c
 struct BinaryProtocol3 {
-    uint8_t type;            // message type
-    uint8_t reserved;        // reserved
-    uint16_t payload_size;   // payload size
-    uint8_t payload[];       // payload
+    uint8_t type;            // тип сообщения
+    uint8_t reserved;        // зарезервировано
+    uint16_t payload_size;   // размер полезной нагрузки
+    uint8_t payload[];       // полезные данные
 } __attribute__((packed));
 ```
 
 ---
 
-## 4. JSON Message Structure
+## 4. Структура JSON-сообщений
 
-WebSocket text frames carry JSON. The most common `"type"` values and their semantics are listed below. Fields that are not listed may be implementation-specific or optional.
+Текстовые кадры WebSocket несут JSON. Наиболее распространённые значения `"type"` и их семантика перечислены ниже. Поля, не указанные здесь, могут быть специфичны для реализации или необязательны.
 
-### 4.1 Device -> Server
+### 4.1 Устройство -> Сервер
 
 1. **Hello**
-   - Sent once the connection is established; announces the device parameters.
-   - Example:
+   - Отправляется после установки соединения; объявляет параметры устройства.
+   - Пример:
      ```json
      {
        "type": "hello",
@@ -162,13 +163,13 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
      ```
 
 2. **Listen**
-   - Tells the server that the device is starting or stopping microphone capture.
-   - Common fields:
-     - `"session_id"`: session identifier.
+   - Сообщает серверу, что устройство начинает или останавливает захват микрофона.
+   - Общие поля:
+     - `"session_id"`: идентификатор сессии.
      - `"type": "listen"`
-     - `"state"`: `"start"`, `"stop"`, or `"detect"` (wake word detected).
-     - `"mode"`: `"auto"`, `"manual"`, or `"realtime"`.
-   - Example (start listening):
+     - `"state"`: `"start"`, `"stop"` или `"detect"` (слово активации обнаружено).
+     - `"mode"`: `"auto"`, `"manual"` или `"realtime"`.
+   - Пример (начало прослушивания):
      ```json
      {
        "session_id": "xxx",
@@ -179,8 +180,8 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
      ```
 
 3. **Abort**
-   - Aborts the current TTS playback or the voice channel.
-   - Example:
+   - Прерывает текущее воспроизведение TTS или голосовой канал.
+   - Пример:
      ```json
      {
        "session_id": "xxx",
@@ -188,12 +189,12 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
        "reason": "wake_word_detected"
      }
      ```
-   - `reason` may be `"wake_word_detected"` or other implementation-defined values.
+   - `reason` может быть `"wake_word_detected"` или другими значениями, определёнными реализацией.
 
 4. **Wake Word Detected**
-   - Sent by the device when the local wake word detector fires.
-   - Opus audio containing the wake word may be streamed before this message to let the server run voice-print verification.
-   - Example:
+   - Отправляется устройством, когда локальный детектор слов активации срабатывает.
+   - Аудио с вокалом может быть потоково отправлено до этого сообщения, чтобы сервер мог выполнять проверку голосового биометрического профиля.
+   - Пример:
      ```json
      {
        "session_id": "xxx",
@@ -204,8 +205,8 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
      ```
 
 5. **MCP**
-   - The recommended channel for IoT control. Device capability discovery and tool invocation all flow through `type: "mcp"` messages whose `payload` is JSON-RPC 2.0 (see [MCP protocol document](./mcp-protocol.md)).
-   - Device-to-server response example:
+   - Рекомендуемый канал для IoT-управления. Обнаружение возможностей устройства и вызовы инструментов все идут через сообщения `type: "mcp"`, чей `payload` — JSON-RPC 2.0 (см. [документ протокола MCP](./mcp-protocol.md)).
+   - Пример ответа устройства -> сервер:
      ```json
      {
        "session_id": "xxx",
@@ -225,31 +226,31 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
 
 ---
 
-### 4.2 Server -> Device
+### 4.2 Сервер -> Устройство
 
 1. **Hello**
-   - The handshake acknowledgement.
-   - Must include `"type": "hello"` and `"transport": "websocket"`.
-   - May include `audio_params`, meaning the audio parameters the server expects / the canonical set agreed with the device.
-   - May include a `session_id` which the device records.
-   - Once received, the device sets the "audio channel open" event.
+   - Подтверждение рукопожатия.
+   - Должно включать `"type": "hello"` и `"transport": "websocket"`.
+   - Может включать `audio_params`, означающие аудиопараметры, которые ожидает сервер / канонический набор, согласованный с устройством.
+   - Может включать `session_id`, который устройство записывает.
+   - После получения устройство устанавливает событие «аудиоканал открыт».
 
 2. **STT**
    - `{"session_id": "xxx", "type": "stt", "text": "..."}`
-   - The speech-to-text result for the user utterance. Typically shown on the display before moving to the response.
+   - Результат распознавания речи для высказывания пользователя. Обычно отображается на дисплее перед переходом к ответу.
 
 3. **LLM**
    - `{"session_id": "xxx", "type": "llm", "emotion": "happy", "text": "😀"}`
-   - Tells the device to update the emotion / facial expression on the UI.
+   - Сообщает устройству обновить эмоцию / выражение лица в UI.
 
 4. **TTS**
-   - `{"session_id": "xxx", "type": "tts", "state": "start"}`: the server is about to stream TTS audio. The device transitions to the speaking state.
-   - `{"session_id": "xxx", "type": "tts", "state": "stop"}`: the TTS segment is finished.
-   - `{"session_id": "xxx", "type": "tts", "state": "sentence_start", "text": "..."}`: show the current sentence on the UI (for example, subtitle display).
+   - `{"session_id": "xxx", "type": "tts", "state": "start"}`: сервер собирается потоково отправлять аудио TTS. Устройство переходит в состояние воспроизведения.
+   - `{"session_id": "xxx", "type": "tts", "state": "stop"}`: сегмент TTS завершён.
+   - `{"session_id": "xxx", "type": "tts", "state": "sentence_start", "text": "..."}`: отобразить текущее предложение в UI (например, субтитры).
 
 5. **MCP**
-   - The server sends IoT-related commands or receives tool-call results. The `payload` structure follows JSON-RPC 2.0.
-   - Server-to-device `tools/call` example:
+   - Сервер отправляет IoT-команды или получает результаты вызовов инструментов. Структура `payload` следует JSON-RPC 2.0.
+   - Пример `tools/call` сервера -> устройству:
      ```json
      {
        "session_id": "xxx",
@@ -267,8 +268,8 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
      ```
 
 6. **System**
-   - System-level control, often used for remote upgrades / management.
-   - Example:
+   - Системное управление, часто используется для удалённого обновления / управления.
+   - Пример:
      ```json
      {
        "session_id": "xxx",
@@ -276,12 +277,12 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
        "command": "reboot"
      }
      ```
-   - Supported commands:
-     - `"reboot"`: reboot the device.
+   - Поддерживаемые команды:
+     - `"reboot"`: перезагрузить устройство.
 
 7. **Alert**
-   - Instructs the device to show an alert and play a vibration sound. Handled in `Application::OnIncomingJson`.
-   - Example:
+   - Указывает устройству показать оповещение и воспроизвести звук вибрации. Обрабатывается в `Application::OnIncomingJson`.
+   - Пример:
      ```json
      {
        "session_id": "xxx",
@@ -291,14 +292,14 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
        "emotion": "sad"
      }
      ```
-   - Fields:
-     - `status`: short title displayed on screen.
-     - `message`: detailed message.
-     - `emotion`: emotion shown while alerting (e.g. `"sad"`, `"neutral"`).
+   - Поля:
+     - `status`: краткое заголовок, отображаемый на экране.
+     - `message`: подробное сообщение.
+     - `emotion`: эмоция, отображаемая во время оповещения (например, `"sad"`, `"neutral"`).
 
-8. **Custom** (optional)
-   - Available when `CONFIG_RECEIVE_CUSTOM_MESSAGE` is enabled.
-   - Example:
+8. **Custom** (необязательно)
+   - Доступно, когда включено `CONFIG_RECEIVE_CUSTOM_MESSAGE`.
+   - Пример:
      ```json
      {
        "session_id": "xxx",
@@ -310,29 +311,29 @@ WebSocket text frames carry JSON. The most common `"type"` values and their sema
      ```
 
 9. **Binary audio frames**
-   - When the server pushes Opus-encoded audio as binary frames, the device decodes and plays them.
-   - Frames received while the device is in the `listening` state are dropped to avoid conflicts with the microphone stream.
+   - Когда сервер отправляет Opus-кодированные аудиоданные в бинарных кадрах, устройство декодирует и воспроизводит их.
+   - Кадры, полученные во время состояния `listening`, отбрасываются, чтобы избежать конфликтов с микрофонным потоком.
 
 ---
 
-## 5. Audio Codec
+## 5. Аудиокодек
 
-1. **Device uploads microphone audio**
-   - After optional AEC / NR / AGC processing, the audio is Opus-encoded and sent as binary frames.
-   - Depending on the protocol version, the frames may be raw Opus (v1) or wrapped in the metadata structures (v2/v3).
+1. **Устройство загружает аудио с микрофона**
+   - После необязательной обработки AEC / NR / AGC аудио кодируется в Opus и отправляется в бинарных кадрах.
+   - В зависимости от версии протокола кадры могут быть сырыми Opus (v1) или упакованными в метаданные (v2/v3).
 
-2. **Device plays server audio**
-   - Incoming binary frames are also treated as Opus.
-   - The device decodes and sends them to the audio output.
-   - If the sample rate differs from the device's output, it is resampled after decoding.
+2. **Устройство воспроизводит аудио сервера**
+   - Входящие бинарные кадры также обрабатываются как Opus.
+   - Устройство декодирует их и отправляет на аудиовыход.
+   - Если частота дискретизации отличается от выходной частоты устройства, она пересэмпливается после декодирования.
 
 ---
 
-## 6. Device States
+## 6. Состояния устройства
 
-### 6.1 Main states
+### 6.1 Основные состояния
 
-The device state machine is defined in [`main/device_state.h`](../main/device_state.h) and includes:
+Конечный автомат состояний устройства определён в [`main/device_state.h`](../main/device_state.h) и включает:
 
 - `kDeviceStateUnknown`
 - `kDeviceStateStarting`
@@ -343,27 +344,27 @@ The device state machine is defined in [`main/device_state.h`](../main/device_st
 - `kDeviceStateSpeaking`
 - `kDeviceStateUpgrading`
 - `kDeviceStateActivating`
-- `kDeviceStateAudioTesting`    (factory / bring-up audio testing)
-- `kDeviceStateFatalError`      (non-recoverable error requiring user action)
+- `kDeviceStateAudioTesting`    (заводское / проверка аудио)
+- `kDeviceStateFatalError`      (некритическая ошибка, требующая действий пользователя)
 
-### 6.2 Typical transitions
+### 6.2 Типичные переходы
 
 1. **Idle -> Connecting**
-   - Triggered by wake word or button press. The device calls `OpenAudioChannel()`, sets up the WebSocket, and sends `"type":"hello"`.
+   - Инициируется словом активации или нажатием кнопки. Устройство вызывает `OpenAudioChannel()`, настраивает WebSocket и отправляет `"type":"hello"`.
 
 2. **Connecting -> Listening**
-   - Once connected, `SendStartListening(...)` is called and microphone streaming begins.
+   - После подключения вызывается `SendStartListening(...)` и начинается потоковая передача микрофона.
 
 3. **Listening -> Speaking**
-   - Server sends `{"type":"tts","state":"start"}`; the device stops sending mic audio and plays incoming TTS.
+   - Сервер отправляет `{"type":"tts","state":"start"}`; устройство останавливает отправку микрофонного аудио и воспроизводит входящий TTS.
 
 4. **Speaking -> Idle**
-   - Server sends `{"type":"tts","state":"stop"}`. When auto-continue is enabled the device transitions back to Listening; otherwise it returns to Idle.
+   - Сервер отправляет `{"type":"tts","state":"stop"}`. При включённом автопродолжении устройство возвращается в Listening; иначе — в Idle.
 
 5. **Listening / Speaking -> Idle** (abort)
-   - `SendAbortSpeaking(...)` or `CloseAudioChannel()` interrupts the session and closes the WebSocket.
+   - `SendAbortSpeaking(...)` или `CloseAudioChannel()` прерывают сессию и закрывают WebSocket.
 
-### 6.3 Auto-mode state diagram
+### 6.3 Диаграмма состояний в авто-режиме
 
 ```mermaid
 stateDiagram
@@ -385,7 +386,7 @@ stateDiagram
   kDeviceStateStarting --> kDeviceStateFatalError: Fatal error
 ```
 
-### 6.4 Manual-mode state diagram
+### 6.4 Диаграмма состояний в ручном режиме
 
 ```mermaid
 stateDiagram
@@ -407,52 +408,52 @@ stateDiagram
 
 ---
 
-## 7. Error Handling
+## 7. Обработка ошибок
 
-1. **Connection failure**
-   - If `Connect(url)` fails or the server hello is not received before the timeout, `on_network_error_()` is invoked and the device shows a "cannot connect" alert.
+1. **Ошибка подключения**
+   - Если `Connect(url)` не удался или серверный hello не получен до таймаута, вызывается `on_network_error_()` и устройство показывает оповещение «не удалось подключиться».
 
-2. **Server disconnect**
-   - If the WebSocket drops unexpectedly, `OnDisconnected()` is called:
-     - `on_audio_channel_closed_()` runs.
-     - The device returns to Idle (or retries, depending on policy).
-
----
-
-## 8. Other Notes
-
-1. **Authentication**
-   - The device supplies `Authorization: Bearer <token>`; the server must validate it.
-   - If the token is missing or invalid the server may reject the handshake or terminate the session later.
-
-2. **Session scope**
-   - Many messages carry a `session_id`, useful when the server serves multiple concurrent interactions.
-
-3. **Audio payload**
-   - Default audio format is Opus at 16 kHz, mono. The frame duration is controlled by `OPUS_FRAME_DURATION_MS` (typically 60 ms). The server may use 24 kHz on the downlink for better music playback.
-
-4. **Binary protocol version selection**
-   - Configured through the `version` setting:
-     - v1: raw Opus
-     - v2: metadata + timestamp (useful for server-side AEC)
-     - v3: lightweight header
-   - The value is echoed back in the `Protocol-Version` header and the hello message.
-
-5. **IoT control via MCP**
-   - All IoT capability discovery and control flows through MCP (`type: "mcp"`). The legacy `type: "iot"` protocol is deprecated.
-   - MCP works over both WebSocket and MQTT, giving better standardization and extensibility.
-   - See [MCP protocol document](./mcp-protocol.md) and [MCP IoT control usage](./mcp-usage.md) for details.
-
-6. **Malformed JSON**
-   - When a required field such as `type` is missing, the device logs `ESP_LOGE(TAG, "Missing message type, data: %s", data);` and ignores the message.
+2. **Отключение сервера**
+   - Если WebSocket неожиданно разрывается, вызывается `OnDisconnected()`:
+     - Выполняется `on_audio_channel_closed_()`.
+     - Устройство возвращается в Idle (или повторяет попытку, в зависимости от политики).
 
 ---
 
-## 9. Example Message Flow
+## 8. Прочие замечания
 
-A simplified two-way exchange:
+1. **Аутентификация**
+   - Устройство передаёт `Authorization: Bearer <token>`; сервер должен его проверять.
+   - Если токен отсутствует или недействителен, сервер может отклонить рукопожатие или прекратить сессию позже.
 
-1. **Device -> Server** (handshake)
+2. **Объём сессии**
+   - Многие сообщения содержат `session_id`, полезный, когда сервер обслуживает несколько параллельных взаимодействий.
+
+3. **Аудиополезные данные**
+   - Формат аудио по умолчанию — Opus при 16 кГц, моно. Длительность кадра управляется `OPUS_FRAME_DURATION_MS` (обычно 60 мс). Сервер может использовать 24 кГц на downstream для лучшего воспроизведения музыки.
+
+4. **Выбор версии бинарного протокола**
+   - Настраивается через параметр `version`:
+     - v1: сырой Opus
+     - v2: метаданные + временная метка (полезно для серверного AEC)
+     - v3: лёгкий заголовок
+   - Значение отражается в заголовке `Protocol-Version` и сообщении hello.
+
+5. **IoT-управление через MCP**
+   - Все обнаружение возможностей IoT и управление идут через MCP (`type: "mcp"`). Устаревший протокол `type: "iot"` устарел.
+   - MCP работает как по WebSocket, так и по MQTT, обеспечивая лучшую стандартизацию и расширяемость.
+   - Подробности в [документе протокола MCP](./mcp-protocol.md) и [использовании MCP для IoT](./mcp-usage.md).
+
+6. **Некорректный JSON**
+   - Когда обязательное поле, такое как `type`, отсутствует, устройство логирует `ESP_LOGE(TAG, "Missing message type, data: %s", data);` и игнорирует сообщение.
+
+---
+
+## 9. Пример потока сообщений
+
+Упрощённый двусторонний обмен:
+
+1. **Устройство -> Сервер** (рукопожатие)
    ```json
    {
      "type": "hello",
@@ -471,7 +472,7 @@ A simplified two-way exchange:
    }
    ```
 
-2. **Server -> Device** (handshake ack)
+2. **Сервер -> Устройство** (подтверждение рукопожатия)
    ```json
    {
      "type": "hello",
@@ -484,7 +485,7 @@ A simplified two-way exchange:
    }
    ```
 
-3. **Device -> Server** (start listening)
+3. **Устройство -> Сервер** (начало прослушивания)
    ```json
    {
      "session_id": "xxx",
@@ -493,9 +494,9 @@ A simplified two-way exchange:
      "mode": "auto"
    }
    ```
-   The device begins streaming binary Opus frames.
+   Устройство начинает потоковую передачу бинарных кадров Opus.
 
-4. **Server -> Device** (ASR result)
+4. **Сервер -> Устройство** (результат ASR)
    ```json
    {
      "session_id": "xxx",
@@ -504,7 +505,7 @@ A simplified two-way exchange:
    }
    ```
 
-5. **Server -> Device** (TTS start)
+5. **Сервер -> Устройство** (начало TTS)
    ```json
    {
      "session_id": "xxx",
@@ -512,9 +513,9 @@ A simplified two-way exchange:
      "state": "start"
    }
    ```
-   The server follows up with binary Opus frames for the device to play.
+   Сервер продолжает отправкой бинарных кадров Opus для воспроизведения устройством.
 
-6. **Server -> Device** (TTS stop)
+6. **Сервер -> Устройство** (конец TTS)
    ```json
    {
      "session_id": "xxx",
@@ -522,17 +523,17 @@ A simplified two-way exchange:
      "state": "stop"
    }
    ```
-   The device stops playback and, if no further instructions arrive, returns to idle.
+   Устройство останавливает воспроизведение и, если не поступит дальнейших указаний, возвращается в состояние простоя.
 
 ---
 
-## 10. Summary
+## 10. Краткое содержание
 
-This protocol carries JSON text and binary Opus frames over a WebSocket connection to implement audio streaming, TTS playback, speech recognition, device state management, MCP dispatch, and more. Key traits:
+Этот протокол переносит текстовые JSON-сообщения и бинарные кадры Opus по WebSocket-соединению для реализации потоковой передачи аудио, воспроизведения TTS, распознавания речи, управления состоянием устройства, диспатча MCP и многого другого. Ключевые особенности:
 
-- **Handshake**: send `"type":"hello"` and wait for the server reply.
-- **Audio channel**: bidirectional Opus streaming, with three binary framing variants.
-- **JSON messages**: dispatched by `"type"` (TTS, STT, MCP, WakeWord, System, Alert, Custom, ...).
-- **Extensibility**: extra fields in JSON, additional headers for authentication.
+- **Рукопожатие**: отправьте `"type":"hello"` и дождитесь ответа сервера.
+- **Аудиоканал**: двунаправленный поток Opus с тремя вариантами бинарного кадрирования.
+- **JSON-сообщения**: диспатч по `"type"` (TTS, STT, MCP, WakeWord, System, Alert, Custom, ...).
+- **Расширяемость**: дополнительные поля в JSON, дополнительные заголовки для аутентификации.
 
-Server and device must agree on the meaning, timing, and error handling of each message type so the session runs smoothly. The text above provides the baseline for integration, debugging, and extension.
+Сервер и устройство должны согласовать значение, тайминг и обработку ошибок каждого типа сообщения, чтобы сессия работала гладко. Описанный выше текст обеспечивает базу для интеграции, отладки и расширения.

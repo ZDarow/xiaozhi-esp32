@@ -1,49 +1,49 @@
-# Account and Device Support
+# Поддержка аккаунта и устройства
 
-This GitHub repository tracks the open-source XiaoZhi device firmware. Account recovery, device ownership, and cloud-service requests are handled outside the public issue tracker.
+Этот репозиторий GitHub отслеживает открытую прошивку устройства XiaoZhi. Восстановление аккаунта, передача прав собственности на устройство и запросы облачных сервисов обрабатываются вне публичного трекера задач.
 
-## Unbind a Previously Owned Device
+## Отвязка ранее используемого устройства
 
-If you purchased or received a used device that is still bound to another person's account:
+Если вы приобрели или получили подержанное устройство, которое всё ещё привязано к чужому аккаунту:
 
-1. Collect the device ID and MAC address using the instructions below.
-2. Email [xiaozhi.ai@tenclass.com](mailto:xiaozhi.ai@tenclass.com?subject=Device%20unbinding%20request) with both identifiers.
-3. Use an email subject such as `Device unbinding / 解绑设备 - Device ID XXX - MAC address XXX`.
+1. Сборите идентификатор устройства и MAC-адрес согласно инструкциям ниже.
+2. Отправьте email на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Device%20unbinding%20request) с обоими идентификаторами.
+3. Используйте тему письма, например `Отвязка устройства / Device unbinding - Device ID XXX - MAC address XXX`.
 
-For multiple devices, attach a list containing the device ID and MAC address for each device.
+Для нескольких устройств приложите список, содержащий идентификатор устройства и MAC-адрес для каждого устройства.
 
-> **Privacy:** Send device IDs and MAC addresses only by email. Do not post them in a public GitHub issue, discussion, screenshot, or log.
+> **Конфиденциальность:** Отправляйте идентификаторы устройств и MAC-адреса только по email. Не публикуйте их в публичном GitHub issue, обсуждении, скриншоте или логе.
 
-### Why Both Identifiers Are Required
+### Почему требуются оба идентификатора
 
-- The **MAC address** uniquely identifies the physical device hardware.
-- The **device ID** is obtained by asking the AI running on the device. Providing the value reported by the device helps demonstrate that the requester has the device in hand and can operate it.
+- **MAC-адрес** однозначно идентифицирует физическое оборудование.
+- **Идентификатор устройства** получается, спросив у ИИ, работающего на устройстве. Предоставление значения, сообщённого устройством, помогает подтвердить, что у владелец держит устройство в руках и может управлять им.
 
-Together, these identifiers help the support team locate the correct binding record and avoid unbinding the wrong device.
+Вместе эти идентификаторы помогают службе поддержки найти правильную запись привязки и не отвязать неверное устройство.
 
-### Find the Device ID
+### Как найти идентификатор устройства
 
-If the device can connect and have a conversation, ask it:
+Если устройство может подключиться и вести разговор, спросите его:
 
-> What is my device ID?
+> Какой мой идентификатор устройства?
 
-Record the complete value reported by the device. Both the device ID and MAC address are required for the standard unbinding process. If the device cannot have a conversation or does not return a device ID, explain this in the email; the support team may require other proof of possession. Do not guess or substitute a temporary activation code.
+Запишите полное значение, сообщённое устройством. Для стандартного процесса отвязки требуются и идентификатор устройства, и MAC-адрес. Если устройство не может вести разговор или не возвращает идентификатор, объясните это в письме; служба поддержки может потребовать других доказательств владения. Не угадывайте и не подставляйте временный код активации.
 
-### Find the MAC Address
+### Как найти MAC-адрес
 
-1. Connect the powered-on device to a computer with a data-capable USB cable.
-2. Open the device's serial port with a serial terminal. Developers with an ESP-IDF environment can use `idf.py monitor`.
-3. Keep the serial terminal open and restart the device so that the complete startup log is captured.
-4. Search the log for a line similar to:
+1. Подключите включённое устройство к компьютеру кабелем с поддержкой передачи данных.
+2. Откройте последовательный порт устройства с помощью терминала. Разработчики среды ESP-IDF могут использовать `idf.py monitor`.
+3. Держите терминал открытым и перезагрузите устройство, чтобы захватить полный журнал загрузки.
+4. Найдите в журнале строку, похожую на:
 
    ```text
    wifi:mode : sta (aa:bb:cc:dd:ee:ff)
    ```
 
-5. The value inside the parentheses is the Wi-Fi MAC address to include in the email.
+5. Значение внутри скобок — это Wi-Fi MAC-адрес, который нужно включить в email.
 
-If that line does not appear, search the startup log for `MAC` or `mac_address`. If you still cannot identify it, attach the exact device model and explain the situation in the private email. Do not upload the unredacted startup log to a public GitHub issue because it may contain the MAC address, UUID, Wi-Fi name, and other device information.
+Если эта строка не появляется, найдите в журнале загрузки `MAC` или `mac_address`. Если вы всё ещё не можете его идентифицировать, укажите точную модель устройства и объясните ситуацию в личном письме. Не загружайте непроверенный журнал загрузки в публичный GitHub issue, так как он может содержать MAC-адрес, UUID, имя Wi-Fi и другую информацию об устройстве.
 
-## Other Account and Cloud-Service Requests
+## Прочие запросы аккаунта и облачных сервисов
 
-For verification codes, password recovery, activation, agent configuration, voiceprint, voice cloning, and other cloud services, use the [XiaoZhi AI website](https://xiaozhi.me/).
+Для кодов подтверждения, восстановления пароля, активации, настройки агента, голосового биометрического профиля, клонирования голоса и других облачных сервисов используйте [веб-сайт XiaoZhi AI](https://xiaozhi.me/).

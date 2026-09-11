@@ -1,49 +1,51 @@
-# MCP (Model Context Protocol) Interaction Flow
+# Поток взаимодействия MCP (Model Context Protocol)
 
-NOTICE: This document was AI-assisted; when implementing a backend, always cross-check the details against the code.
+**ВНИМАНИЕ:** Этот документ был создан с помощью ИИ; при реализации бэкенда всегда проверяйте детали по коду.
 
-In this project, MCP is used between the backend API (MCP client) and the ESP32 device (MCP server) to let the backend discover and invoke the device's capabilities (tools).
+В этом проекте MCP используется между бэкендом API (клиент MCP) и устройством ESP32 (сервер MCP), чтобы бэкенд мог обнаруживать и вызывать возможности устройства (инструменты).
 
-## Message Format
+## Формат сообщений
 
-From `main/protocols/protocol.cc` and `main/mcp_server.cc`, MCP messages are wrapped inside the underlying transport (WebSocket or MQTT). The inner payload follows the [JSON-RPC 2.0](https://www.jsonrpc.org/specification) specification.
+Из `main/protocols/protocol.cc` и `main/mcp_server.cc`, сообщения MCP оборачиваются внутри
+базового транспорта (WebSocket или MQTT). Внутренняя полезная нагрузка следует спецификации
+[JSON-RPC 2.0](https://www.jsonrpc.org/specification).
 
-Overall message layout:
+Общий макет сообщения:
 
 ```json
 {
-  "session_id": "...",   // session id
-  "type": "mcp",         // fixed value "mcp"
-  "payload": {           // JSON-RPC 2.0 payload
+  "session_id": "...",   // идентификатор сессии
+  "type": "mcp",         // фиксированное значение "mcp"
+  "payload": {           // полезная нагрузка JSON-RPC 2.0
     "jsonrpc": "2.0",
-    "method": "...",     // method name ("initialize", "tools/list", "tools/call", ...)
-    "params": { ... },   // arguments (for requests)
-    "id": ...,           // request id (for requests and responses)
-    "result": { ... },   // success result (response)
-    "error": { ... }     // error (response)
+    "method": "...",     // имя метода ("initialize", "tools/list", "tools/call", ...)
+    "params": { ... },   // аргументы (для запросов)
+    "id": ...,           // идентификатор запроса (для запросов и ответов)
+    "result": { ... },   // результат успеха (ответ)
+    "error": { ... }     // ошибка (ответ)
   }
 }
 ```
 
-The `payload` follows standard JSON-RPC 2.0:
+Поле `payload` следует стандартному JSON-RPC 2.0:
 
-- `jsonrpc`: always `"2.0"`.
-- `method`: the method name (requests).
-- `params`: structured parameters, usually an object (requests).
-- `id`: request identifier; echoed back in responses.
-- `result`: success value (responses).
-- `error`: error information (responses).
+- `jsonrpc`: всегда `"2.0"`.
+- `method`: имя метода (запросы).
+- `params`: структурированные параметры, обычно объект (запросы).
+- `id`: идентификатор запроса; возвращается в ответах.
+- `result`: результат успеха (ответы).
+- `error`: информация об ошибке (ответы).
 
-## Interaction Flow
+## Поток взаимодействия
 
-MCP interactions are driven by the client (backend) discovering and invoking tools on the device.
+Взаимодействия MCP инициируются клиентом (бэкендом), который обнаруживает и вызывает инструменты на устройстве.
 
-1. **Connection and capability announcement**
+1. **Подключение и объявление возможностей**
 
-   - **When**: after the device boots and connects to the backend.
-   - **Direction**: device -> backend.
-   - **Message**: the device sends the transport hello, advertising supported capabilities. MCP support is signaled via `"mcp": true` in the `features` map.
-   - **Example (transport hello, not an MCP payload):**
+   - **Когда**: после загрузки устройства и подключения к бэкенду.
+   - **Направление**: устройство -> бэкенд.
+   - **Сообщение**: устройство отправляет hello транспорта, рекламируя поддерживаемые возможности. Поддержка MCP сигнализируется через `"mcp": true` в карте `features`.
+   - **Пример (hello транспорта, не MCP-полезная нагрузка):**
      ```json
      {
        "type": "hello",
@@ -57,31 +59,31 @@ MCP interactions are driven by the client (backend) discovering and invoking too
      }
      ```
 
-2. **Initialize the MCP session**
+2. **Инициализация сессии MCP**
 
-   - **When**: after the backend sees that the device supports MCP. Usually the first MCP request.
-   - **Direction**: backend -> device.
-   - **Method**: `initialize`
-   - **Message (MCP payload):**
+   - **Когда**: после того, как бэкенд видит, что устройство поддерживает MCP. Обычно первый запрос MCP.
+   - **Направление**: бэкенд -> устройство.
+   - **Метод**: `initialize`
+   - **Сообщение (MCP-полезная нагрузка):**
      ```json
      {
        "jsonrpc": "2.0",
        "method": "initialize",
        "params": {
          "capabilities": {
-           // optional client capabilities
+           // необязательные возможности клиента
            "vision": {
-             "url": "...",   // camera image upload endpoint (must be an http URL, not a websocket URL)
-             "token": "..."  // token for the upload URL
+             "url": "...",   // конечная точка загрузки изображения с камеры (должен быть http URL, не websocket URL)
+             "token": "..."  // токен для URL загрузки
            }
-           // ... other client capabilities
+           // ... другие возможности клиента
          }
        },
        "id": 1
      }
      ```
 
-   - **Device response:**
+   - **Ответ устройства:**
      ```json
      {
        "jsonrpc": "2.0",
@@ -92,22 +94,22 @@ MCP interactions are driven by the client (backend) discovering and invoking too
            "tools": {}
          },
          "serverInfo": {
-           "name": "...",    // device name (BOARD_NAME)
-           "version": "..."  // firmware version
+           "name": "...",    // имя устройства (BOARD_NAME)
+           "version": "..."  // версия прошивки
          }
        }
      }
      ```
 
-3. **Discover the tools**
+3. **Обнаружение инструментов**
 
-   - **When**: whenever the backend needs the list of callable tools and their signatures.
-   - **Direction**: backend -> device.
-   - **Method**: `tools/list`
-   - **Request parameters**:
-     - `cursor` (string, optional): pagination cursor. Empty on the first request.
-     - `withUserTools` (boolean, optional, default `false`): if `true`, the device also includes "user-only" tools (see "User-only tools" below) in the listing. This is typically used by a companion app that lets the user trigger privileged actions directly.
-   - **Message (MCP payload):**
+   - **Когда**: всякий раз, когда бэкенду нужно список вызываемых инструментов и их сигнатур.
+   - **Направление**: бэкенд -> устройство.
+   - **Метод**: `tools/list`
+   - **Параметры запроса**:
+     - `cursor` (string, необязательно): курсор пагинации. Пусто в первом запросе.
+     - `withUserTools` (boolean, необязательно, по умолчанию `false`): если `true`, устройство также включает «пользовательские» инструменты (см. ниже) в список. Обычно используется приложением-компаньоном, которое позволяет пользователю инициировать привилегированные действия.
+   - **Сообщение (MCP-полезная нагрузка):**
      ```json
      {
        "jsonrpc": "2.0",
@@ -119,7 +121,7 @@ MCP interactions are driven by the client (backend) discovering and invoking too
        "id": 2
      }
      ```
-   - **Device response:**
+   - **Ответ устройства:**
      ```json
      {
        "jsonrpc": "2.0",
@@ -136,20 +138,20 @@ MCP interactions are driven by the client (backend) discovering and invoking too
              "description": "...",
              "inputSchema": { ... }
            }
-           // ... more tools
+           // ... больше инструментов
          ],
          "nextCursor": "..."
        }
      }
      ```
-   - **Pagination**: when `nextCursor` is non-empty, the backend must send another `tools/list` request with that cursor to fetch the next page.
+   - **Пагинация**: когда `nextCursor` непуст, бэкенд должен отправить ещё один запрос `tools/list` с этим курсором для получения следующей страницы.
 
-4. **Call a tool**
+4. **Вызов инструмента**
 
-   - **When**: the backend wants to execute a specific device function.
-   - **Direction**: backend -> device.
-   - **Method**: `tools/call`
-   - **Message (MCP payload):**
+   - **Когда**: бэкенд хочет выполнить конкретную функцию устройства.
+   - **Направление**: бэкенд -> устройство.
+   - **Метод**: `tools/call`
+   - **Сообщение (MCP-полезная нагрузка):**
      ```json
      {
        "jsonrpc": "2.0",
@@ -163,7 +165,7 @@ MCP interactions are driven by the client (backend) discovering and invoking too
        "id": 3
      }
      ```
-   - **Successful response:**
+   - **Успешный ответ:**
      ```json
      {
        "jsonrpc": "2.0",
@@ -176,7 +178,7 @@ MCP interactions are driven by the client (backend) discovering and invoking too
        }
      }
      ```
-   - **Error response:**
+   - **Ответ с ошибкой:**
      ```json
      {
        "jsonrpc": "2.0",
@@ -188,12 +190,12 @@ MCP interactions are driven by the client (backend) discovering and invoking too
      }
      ```
 
-5. **Device-initiated notifications**
+5. **Уведомления, инициированные устройством**
 
-   - **When**: the device wants to inform the backend of internal events (e.g. state transitions). `Application::SendMcpMessage` is the outbound entry point.
-   - **Direction**: device -> backend.
-   - **Method**: conventionally `notifications/...` or any custom method.
-   - **Message (MCP payload)**: JSON-RPC notifications have no `id`.
+   - **Когда**: устройство хочет сообщить бэкенду о внутренних событиях (например, переходах состояний). `Application::SendMcpMessage` — исходная точка для исходящих сообщений.
+   - **Направление**: устройство -> бэкенд.
+   - **Метод**: по соглашению `notifications/...` или любой кастомный метод.
+   - **Сообщение (MCP-полезная нагрузка)**: уведомления JSON-RPC не имеют `id`.
      ```json
      {
        "jsonrpc": "2.0",
@@ -204,67 +206,69 @@ MCP interactions are driven by the client (backend) discovering and invoking too
        }
      }
      ```
-   - **Backend handling**: process the notification without replying.
+   - **Обработка бэкендом**: обрабатывайте уведомление без ответа.
 
-## User-only Tools
+## Пользовательские инструменты
 
-The MCP server on the device maintains two kinds of tools:
+Сервер MCP на устройстве поддерживает два типа инструментов:
 
-- **Regular tools** - registered via `McpServer::AddTool`. Exposed to the backend (and hence the AI model) by default.
-- **User-only tools** - registered via `McpServer::AddUserOnlyTool`. These are hidden from standard `tools/list` results, because they are privileged or user-facing actions that should not be invoked autonomously by the AI. Examples include system reboot, firmware upgrade, and screen snapshot upload.
+- **Обычные инструменты** — регистрируются через `McpServer::AddTool`. Доступны бэкенду (и, следовательно, ИИ) по умолчанию.
+- **Пользовательские инструменты** — регистрируются через `McpServer::AddUserOnlyTool`. Скрыты от стандартных ответов `tools/list`, так как являются привилегированными или ориентированными на пользователя действиями, которые не должны вызываться автономно ИИ. Примеры: перезагрузка системы, обновление прошивки, загрузка снимка экрана.
 
-The backend opts in to user-only tools by sending `tools/list` with `params.withUserTools = true`. Typical usage: a companion app screen that exposes these actions to the end user.
+Бэкенд включает пользовательские инструменты, отправив `tools/list` с `params.withUserTools = true`. Типичное использование: экран приложения-компаньона, который предоставляет эти действия конечному пользователю.
 
-See [MCP IoT control usage](./mcp-usage.md) for how to register either kind of tool on the device side.
+См. [Использование MCP для IoT-управления](./mcp-usage.md), как зарегистрировать любой тип инструмента на стороне устройства.
 
-## Sequence Diagram
+## Диаграмма последовательности
 
-A simplified diagram of the main MCP message flow:
+Упрощённая диаграмма основного потока сообщений MCP:
 
 ```mermaid
 sequenceDiagram
-    participant Device as ESP32 Device
-    participant BackendAPI as Backend API (Client)
+    participant Device as ESP32 Устройство
+    participant BackendAPI as Бэкенд API (Клиент)
 
-    Note over Device, BackendAPI: Establish WebSocket / MQTT
+    Note over Device, BackendAPI: Установка WebSocket / MQTT
 
     Device->>BackendAPI: Hello (features.mcp = true)
 
-    BackendAPI->>Device: MCP Initialize request
+    BackendAPI->>Device: MCP Initialize запрос
     Note over BackendAPI: method: initialize
     Note over BackendAPI: params: { capabilities: ... }
 
-    Device->>BackendAPI: MCP Initialize response
+    Device->>BackendAPI: MCP Initialize ответ
     Note over Device: result: { protocolVersion, serverInfo, ... }
 
-    BackendAPI->>Device: MCP tools/list request
+    BackendAPI->>Device: MCP tools/list запрос
     Note over BackendAPI: params: { cursor: "", withUserTools: false }
 
-    Device->>BackendAPI: MCP tools/list response
+    Device->>BackendAPI: MCP tools/list ответ
     Note over Device: result: { tools: [...], nextCursor: ... }
 
-    loop Optional pagination
-        BackendAPI->>Device: MCP tools/list request
+    loop Опциональная пагинация
+        BackendAPI->>Device: MCP tools/list запрос
         Note over BackendAPI: params: { cursor: "..." }
-        Device->>BackendAPI: MCP tools/list response
+        Device->>BackendAPI: MCP tools/list ответ
         Note over Device: result: { tools: [...], nextCursor: "" }
     end
 
-    BackendAPI->>Device: MCP tools/call request
+    BackendAPI->>Device: MCP tools/call запрос
     Note over BackendAPI: params: { name, arguments }
 
-    alt Call succeeds
-        Device->>BackendAPI: MCP tools/call success response
+    alt Вызов успешен
+        Device->>BackendAPI: MCP tools/call успешный ответ
         Note over Device: result: { content, isError: false }
-    else Call fails
-        Device->>BackendAPI: MCP tools/call error response
+    else Вызов не удался
+        Device->>BackendAPI: MCP tools/call ответ с ошибкой
         Note over Device: error: { code, message }
     end
 
-    opt Device notification
-        Device->>BackendAPI: MCP notification
+    opt Уведомление устройства
+        Device->>BackendAPI: MCP уведомление
         Note over Device: method: notifications/...
     end
 ```
 
-This document summarizes the MCP interaction flow in this project. For exact parameter shapes, behavior, and available tools, refer to `McpServer::AddCommonTools` / `AddUserOnlyTools` in `main/mcp_server.cc` and the per-board `InitializeTools` implementations.
+Этот документ кратко описывает поток взаимодействия MCP в этом проекте. Для точных параметров,
+поведения и доступных инструментов обращайтесь к `McpServer::AddCommonTools` / `AddUserOnlyTools`
+в `main/mcp_server.cc` и реализациям `InitializeTools` для каждой платы.

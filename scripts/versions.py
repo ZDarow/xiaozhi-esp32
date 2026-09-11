@@ -235,7 +235,7 @@ def main():
                 info = read_binary(folder)
                 target_dir = os.path.join("firmwares", tag)
                 info["tag"] = tag
-                info["url"] = os.path.join(os.environ['OSS_BUCKET_URL'], target_dir, "xiaozhi.bin")
+                info["url"] = os.path.join(os.environ.get('OSS_BUCKET_URL', 'https://ota.xiaozhi.ru/firmwares'), target_dir, "xiaozhi.bin")
                 open(info_path, "w", encoding="utf-8").write(json.dumps(info, indent=4))
                 # upload all file to oss
                 upload_dir_to_oss(folder, target_dir)

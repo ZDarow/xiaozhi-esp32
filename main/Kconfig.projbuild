@@ -2,9 +2,59 @@ menu "Xiaozhi Assistant"
 
 config OTA_URL
     string "Default OTA URL"
-    default "https://api.tenclass.net/xiaozhi/ota/"
+    default "https://ota.xiaozhi.ru/xiaozhi/ota/"
     help
         The application will access this URL to check for new firmwares and server address.
+        Override at runtime via the NVS key "ota_url" or the OTA_URL env variable.
+
+config MQTT_DEFAULT_ENDPOINT
+    string "Default MQTT Endpoint"
+    default "mqtt.xiaozhi.ru"
+    help
+        Default MQTT broker host. Override via NVS key "mqtt_endpoint" or MQTT_ENDPOINT env.
+
+config MQTT_DEFAULT_PORT
+    int "Default MQTT Port"
+    default 8883
+    help
+        Default MQTT broker port.
+
+config WEBSOCKET_DEFAULT_ENDPOINT
+    string "Default WebSocket Endpoint"
+    default "wss://ws.xiaozhi.ru"
+    help
+        Default WebSocket server URL. Override via NVS key "websocket_url" or WEBSOCKET_URL env.
+
+config SUPPORT_EMAIL
+    string "Support Email"
+    default "support@xiaozhi.ru"
+    help
+        Email address for device unbinding and support requests.
+
+config SUPPORT_WEBSITE
+    string "Support Website"
+    default "https://xiaozhi.ru"
+    help
+        Website for account and cloud-service requests.
+
+config ASSETS_GENERATOR_URL
+    string "Custom Assets Generator URL"
+    default "https://assets.xiaozhi.ru"
+    help
+        URL for the custom assets generator (wake words, fonts, emojis, backgrounds).
+
+config USE_GOST_CRYPTO
+    bool "Enable GOST 2012 Cryptography"
+    default n
+    help
+        Enable GOST 2012 (TC 26) cryptography for TLS and OTA signature verification.
+        Requires additional flash and RAM.
+
+config OTA_SIGNATURE_PUBKEY
+    string "OTA Signature Public Key (PEM)"
+    default ""
+    help
+        Public key for verifying OTA image signatures (GOST 2012). Empty = no verification.
 
 choice
     prompt "Flash Assets"

@@ -1,17 +1,17 @@
-# Code Style Guide
+# Руководство по стилю кода
 
-## Formatting Tool
+## Инструмент форматирования
 
-This project uses `clang-format` to keep the code style consistent. The `.clang-format` file in the project root is based on the Google C++ style guide with a few project-specific tweaks.
+Этот проект использует `clang-format` для поддержания согласованного стиля кода. Файл `.clang-format` в корне проекта основан на Google C++ Style Guide с небольшими проектными доработками.
 
-### Installing clang-format
+### Установка clang-format
 
-Make sure `clang-format` is available before you use it:
+Убедитесь, что `clang-format` доступен, прежде чем использовать его:
 
 - **Windows**:
   ```powershell
   winget install LLVM
-  # or with Chocolatey
+  # или с помощью Chocolatey
   choco install llvm
   ```
 
@@ -26,81 +26,75 @@ Make sure `clang-format` is available before you use it:
   brew install clang-format
   ```
 
-### Usage
+### Использование
 
-1. **Format a single file**:
+1. **Форматировать один файл**:
    ```bash
    clang-format -i path/to/your/file.cpp
    ```
 
-2. **Format the entire project**:
+2. **Форматировать весь проект**:
    ```bash
-   # Run from the project root
+   # Запускать из корня проекта
    find main -iname '*.h' -o -iname '*.cc' | xargs clang-format -i
    ```
 
-3. **Check formatting without modifying files (useful in CI / pre-commit)**:
+3. **Проверить форматирование без изменения файлов (удобно в CI / pre-commit)**:
    ```bash
    clang-format --dry-run -Werror path/to/your/file.cpp
    ```
 
-### IDE Integration
+### Интеграция с IDE
 
 - **Visual Studio Code**:
-  1. Install the C/C++ extension.
-  2. Set `C_Cpp.formatting` to `clangFormat` in settings.
-  3. Optionally enable `editor.formatOnSave`.
+  1. Установите расширение C/C++.
+  2. Установите `C_Cpp.formatting` в `clangFormat` в настройках.
+  3. Опционально включите `editor.formatOnSave`.
 
 - **CLion**:
-  1. Open `Editor > Code Style > C/C++` in the settings.
-  2. Set `Formatter` to `clang-format`.
-  3. Choose "use the .clang-format file in the project".
+  1. Откройте `Editor > Code Style > C/C++` в настройках.
+  2. Установите `Formatter` в `clang-format`.
+  3. Выберите «use the .clang-format file in the project».
 
-### Main Rules
+### Основные правила
 
-- Indent with 4 spaces.
-- Line width capped at 100 characters.
-- Attach-style braces (`{` on the same line as the control statement).
-- Pointers and references bind to the type (left alignment).
-- Includes are sorted automatically.
-- Access specifiers are indented by -4 spaces.
+- Отступ — 4 пробела.
+- Ширина строки — максимум 100 символов.
+- Фигурные скобки attach-style (`{` на той же строке, что и управляющая конструкция).
+- Указатели и ссылки привязываются к типу (левыe).
+- Директивы `#include` сортируются автоматически.
+- Модификаторы доступа отступлены на -4 пробела.
 
-## C++ Runtime and Error Handling
+## C++ Runtime и обработка ошибок
 
-- Project-owned C++ code targets GNU C++23. Do not require newer language features in `main/`.
-- C++ exceptions and RTTI are disabled. Do not use `throw`, `try`/`catch`, `dynamic_cast`, or
-  `typeid`.
-- Use RAII for owned resources, including ESP-IDF handles and C APIs with explicit cleanup
-  functions. Raw pointers are non-owning unless an interface documents otherwise.
-- Return `std::expected<T, E>` for recoverable failures that need an error value. Prefer a small
-  enum or `esp_err_t` in hot paths, and translate errors to strings at protocol or UI boundaries.
-- Check an `expected` before dereferencing it. Do not call `value()` on an unchecked result because
-  a bad access terminates the firmware when exceptions are disabled.
-- Treat violated programmer invariants as fatal with an assertion or explicit abort; do not model
-  them as recoverable runtime errors.
-- Realtime audio paths use bounded queues and avoid repeated allocation. Use fixed-capacity storage
-  when the maximum is known; add a pool only after profiling shows churn or fragmentation.
+- Проектное владение C++ кодом таргетирует GNU C++23. Не требуйте более новых языковых фич в `main/`.
+- Исключения C++ и RTTI отключены. Не используйте `throw`, `try`/`catch`, `dynamic_cast` или `typeid`.
+- Используйте RAII для owned-ресурсов, включая дескрипторы ESP-IDF и C API с явными функциями очистки. Сырые указатели не являются владелец, если интерфейс не документирует иное.
+- Возвращайте `std::expected<T, E>` для нефатальных ошибок, требующих значения ошибки. Предпочитайте маленький enum или `esp_err_t` в горячих путях, а строки ошибок формируйте на границах протокола или UI.
+- Проверяйте `expected` перед разыменованием. Не вызывайте `value()` на непроверенном результате — неверный доступ завершит прошивку, когда исключения отключены.
+- Нарушенные инварианты программиста считаются фатальными — используйте assert или явный abort; не моделируйте их как recoverable runtime errors.
+- Аудиопути в реальном времени используют bounded queues и избегают повторных выделений. Используйте fixed-capacity хранилище, когда максимум известен; добавляйте пул только после профилирования, показывающего churn или фрагментацию.
 
-### Notes
+### Примечания
 
-1. Make sure the code has been formatted before committing.
-2. Do not fix up alignment by hand after running clang-format.
-3. To exclude a block from formatting, wrap it with:
+1. Убедитесь, что код отформатирован перед коммитом.
+2. Не исправляйте выравнивание вручную после запуска clang-format.
+3. Чтобы исключить блок из форматирования, оберните его:
    ```cpp
    // clang-format off
-   your code
+   ваш код
    // clang-format on
    ```
 
 ### FAQ
 
-1. **Formatting fails**:
-   - Check whether `clang-format` is too old.
-   - Make sure the file is UTF-8 encoded.
-   - Validate the syntax of your `.clang-format` file.
+1. **Форматирование не проходит**:
+   - Проверьте, не слишком ли старая версия `clang-format`.
+   - Убедитесь, что файл кодируется как UTF-8.
+   - Проверьте синтаксис файла `.clang-format`.
 
-2. **Output differs from what you expected**:
-   - Verify that the `.clang-format` in the project root is actually picked up.
-   - Make sure no other `.clang-format` higher in the tree is winning.
+2. **Вывод отличается от ожидаемого**:
+   - Убедитесь, что `.clang-format` в корне проекта действительно используется.
+   - Проверьте, что нет другого `.clang-format` выше по дереву, который «перекрывает» ваш.
 
-Questions and suggestions are welcome - please open an issue or a pull request.
+Вопросы и предложения — создавайте issue или pull request.

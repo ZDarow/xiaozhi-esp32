@@ -1,11 +1,13 @@
-# Asynchronous Voice Notifications
+# Асинхронные голосовые уведомления
 
-The `notify` message lets the cloud play a one-way voice notification while a device is idle. It does not open a conversation audio channel and never enables microphone uplink. Starting a conversation still requires an explicit wake action from the user.
+Сообщение `notify` позволяет облаку воспроизвести однонаправленное голосовое уведомление,
+когда устройство простаивет. Оно не открывает аудиоканал разговора и никогда не включает
+микрофон для загрузки. Начало разговора всё равно требует явного действия пользователя.
 
-## Message format
+## Формат сообщения
 
-The cloud sends the following JSON through the device's current protocol control connection. For an
-MQTT device, this is the existing MQTT control topic:
+Облако отправляет следующий JSON через текущее управляющее соединение устройства. Для
+устройства MQTT это существующая управляющая тема MQTT:
 
 ```json
 {
@@ -24,47 +26,73 @@ MQTT device, this is the existing MQTT control topic:
 }
 ```
 
-`audio_url` is required. Both `http://` and `https://` URLs are accepted. HTTP is useful for local-network development, while production deployments can enforce HTTPS when generating the URL.
+`audio_url` обязательно. Принимаются URL `http://` и `https://`. HTTP удобен для
+локальной разработки, тогда как продакшен может требовать HTTPS при генерации URL.
 
-`subtitles` is optional. Each entry contains the media start time in milliseconds and the text to display. The device sorts entries by `start_ms` and updates the display only when playback crosses a new subtitle entry.
+`subtitles` необязательно. Каждая запись содержит время начала медиа в миллисекундах и
+текст для отображения. Устройство сортирует записи по `start_ms` и обновляет дисплей
+только тогда, когда воспроизведение пересекает новую запись субтитров.
 
-The message has no acknowledgement, notification ID, state, kind, or expiry field. Delivery is best effort and only applies to online devices.
+Сообщение не имеет поля подтверждения, идентификатора уведомления, состояния, типа или
+истечения срока действия. Доставка best-effort и применяется только к онлайн-устройствам.
 
-## Audio response
+## Аудио-ответ
 
-`audio_url` must return a successful 2xx response containing a single-stream, mono Ogg Opus file. Responses with either `Content-Length` or chunked transfer encoding are supported. Redirects are not followed by the device.
+`audio_url` должен возвращать успешный ответ 2xx с односторонним mono Ogg Opus файлом.
+Поддерживаются ответы с `Content-Length` или chunked transfer encoding. Перенаправления
+устройством не преследуются.
 
-The file is read incrementally. The device does not allocate memory based on the complete response length and does not download the complete file before playback. Notification streaming uses the existing bounded HTTP response queue, a 2 KB Ogg logical-packet buffer, the shared 20-packet Opus decode queue, and the existing two-frame PCM playback queue. The decode queue represents 1.2 seconds at the firmware's normal 60 ms packet duration. These buffers provide TCP backpressure while keeping the feature usable on devices without PSRAM.
+Файл читается по частям. Устройство не выделяет память на основе полной длины ответа и не
+скачивает файл целиком перед воспроизведением. Потоковое воспроизведение уведомлений
+использует существующую bounded HTTP-очередь ответов, 2 КиБ-буфер логических пакетов Ogg,
+общую 20-пакетную очередь декодирования Opus и существующую двухкадровую очередь воспроизведения PCM.
+Очередь декодирования соответствует 1,2 секунде при нормальной длительности пакета 60 мс.
+Эти буферы обеспечивают backpressure TCP, сохраняя функциональность на устройствах без PSRAM.
 
-On devices that use the standalone LiteAudioEngine WakeNet, WakeNet resources are released while a notification is playing and recreated when the device returns to `Idle`. AFE-based devices keep their existing local wake behavior.
+На устройствах с отдельным WakeNet LiteAudioEngine ресурсы WakeNet освобождаются во время
+воспроизведения уведомления и создаются заново, когда устройство возвращается в `Idle`.
+Устройства на базе AFE сохраняют существующее локальное поведение активации.
 
-Opus packet duration is read from the Opus TOC byte instead of being supplied in the MQTT message. Integer packet durations from 5 ms through 120 ms that are supported by the firmware decoder are accepted. The current implementation rejects stereo streams, detected Ogg or Opus structural errors, incomplete streams, oversized logical packets, and 2.5 ms packets.
+Длительность пакета Opus читается из байта TOC Opus, а не передаётся в MQTT-сообщении.
+Принимаются целочисленные длительности пакетов от 5 мс до 120 мс, поддерживаемые декодером
+прошивки. Текущая реализация отклоняет стереопотоки, структурные ошибки Ogg или Opus,
+неполные потоки, перегруженные логические пакеты и пакеты длительностью 2,5 мс.
 
-## Device behavior
+## Поведение устройства
 
-The device accepts `notify` only while it is in `Idle`. It then performs the following actions:
+Устройство принимает `notify` только во время состояния `Idle`. Затем выполняет:
 
-1. Enters the internal `Notifying` state and switches the board to performance mode.
-2. Disables normal voice processing and microphone uplink.
-3. Clears previous playback and queues the built-in popup sound.
-4. Starts one HTTP GET in a background task.
-5. Incrementally demultiplexes Ogg packets and sends them directly to the existing Opus decode queue.
-6. Displays subtitles according to the media position of Opus packets reaching the audio output task.
-7. Returns to `Idle` only after the HTTP stream has ended successfully and all queued audio has played.
+1. Переходит во внутреннее состояние `Notifying` и переключает плату в режим производительности.
+2. Отключает нормальную обработку голоса и загрузку микрофона.
+3. Очищает предыдущее воспроизведение и очередь, вставляя встроенный звук всплывающего окна.
+4. Запускает один HTTP GET в фоновой задаче.
+5. По частям demultiplexes пакеты Ogg и отправляет их прямо в существующую очередь декодирования Opus.
+6. Отображает субтитры согласно позиции медиа пакетов Opus, достигающих задачи вывода аудио.
+7. Возвращается в `Idle` только после успешного завершения HTTP-потока и воспроизведения всей
+   очереди аудио.
 
-The popup is queued before the HTTP task starts, so remote audio cannot play before it. HTTP connection setup still overlaps the actual popup playback.
+Всплывающее окно вставляется перед запуском HTTP-задачи, поэтому удалённое аудио не может
+начать воспроизведение раньше него. Настройка HTTP-соединения всё равно перекрывает
+само воспроизведение всплывающего окна.
 
-If all playback queues drain after remote audio has started but before the HTTP stream has finished,
-the device logs `Notification playback underrun #<count> at <position> ms`. The popup-to-stream
-transition and normal end of playback are not reported as underruns.
+Если все очереди воспроизведения опустошаются после начала удалённого аудио, но до завершения
+HTTP-потока, устройство логирует `Notification playback underrun #<count> at <position> ms`.
+Переход popup-to-stream и нормальное завершение воспроизведения не считаются underrun.
 
-The device does not open the UDP audio channel, send `start-listening`, or automatically enter `Listening`. AFE-based devices may continue local wake-word detection during playback. Devices without playback echo cancellation retain the existing speaking-mode wake behavior; hardware wake controls can still cancel a notification.
+Устройство не открывает UDP-аудиоканал, не отправляет `start-listening` и не автоматически
+входит в `Listening`. Устройства на базе AFE могут продолжать локальное распознавание
+слов активации во время воспроизведения. Устройства без echo cancellation записи сохраняют
+существующее поведение активации в режиме воспроизведения; аппаратные элементы управления
+всё ещё могут отменить уведомление.
 
-A wake action cancels the HTTP producer, clears queued notification audio, and continues through the normal wake flow. Network loss, HTTP errors, and invalid audio also cancel playback and return the device to `Idle`. A second notification received while the device is busy is ignored.
+Действие активации отменяет HTTP-производителя, очищает очередь уведомлений и продолжает
+нормальный поток активации. Потеря сети, ошибки HTTP и недопустимое аудио также отменяют
+воспроизведение и возвращают устройство в `Idle`. Второе уведомление, полученное во время
+занятости устройства, игнорируется.
 
-## xz-mqtt forwarding
+## Пересылка xz-mqtt
 
-`xz-mqtt` forwards the message with its existing Redis RPC method:
+`xz-mqtt` пересылает сообщение с существующим методом Redis RPC:
 
 ```json
 {
@@ -83,7 +111,7 @@ A wake action cancels the HTTP producer, clears queued notification audio, and c
 }
 ```
 
-The RPC result contains the boolean returned by the MQTT send operation:
+Результат RPC содержит логическое значение, возвращаемое операцией публикации MQTT:
 
 ```json
 {
@@ -91,4 +119,7 @@ The RPC result contains the boolean returned by the MQTT send operation:
 }
 ```
 
-This result means that `xz-mqtt` wrote the publish message to the current online device connection. It does not confirm receipt or playback. `xz-mqtt` does not create a UDP session, start the chat bridge, proxy the Ogg file, or retain notifications for offline devices.
+Этот результат означает, что `xz-mqtt` записал сообщение публикации в текущее подключение
+онлайн-устройства. Он не подтверждает получение или воспроизведение. `xz-mqtt` не создаёт
+UDP-сессию, не запускает мост чата, не проксирует файл Ogg и не сохраняет уведомления для
+офлайн-устройств.

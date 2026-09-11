@@ -1,42 +1,42 @@
-name: Firmware development question
-description: Ask a focused technical question about this repository or supported hardware
+name: Вопрос по разработке прошивки
+description: Задать сфокусированный технический вопрос об этом репозитории или поддерживаемом оборудовании
 title: "[Question] "
 labels: ['question']
 body:
   - type: markdown
     attributes:
       value: |
-        This form is for technical questions about the open-source firmware. For device unbinding, email [xiaozhi.ai@tenclass.com](mailto:xiaozhi.ai@tenclass.com?subject=Device%20unbinding%20request) privately with the device ID and MAC address. Other account and cloud-service requests belong on the [XiaoZhi AI website](https://xiaozhi.me/).
+        Эта форма предназначена для технических вопросов об открытой прошивке. Для отвязки устройства отправьте личное письмо на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Device%20unbinding%20request) с идентификатором устройства и MAC-адресом. Другие запросы аккаунта и облачных сервисов отправляйте на [веб-сайт XiaoZhi AI](https://xiaozhi.me/).
 
   - type: checkboxes
     id: checklist
     attributes:
-      label: Before submitting
+      label: Перед отправкой
       options:
-        - label: I have searched the repository and existing issues and did not find an answer.
+        - label: Я поискал в репозитории и существующих issues и не нашёл ответа.
           required: true
 
   - type: input
     id: context
     attributes:
-      label: Relevant device, version, or code area
-      description: Enter the device/model, board target, source or firmware version, file, or subsystem that matters to the question.
-      placeholder: ex. zhengchen-cam on v2.2.6, or main/audio on current main
+      label: Релевантное устройство, версия или область кода
+      description: Укажите устройство/модель, целевую плату, источник или версию прошивки, файл или подсистему, которые важны для вопроса.
+      placeholder: ex. zhengchen-cam на v2.2.6, или main/audio на текущей main
     validations:
       required: true
 
   - type: textarea
     id: question
     attributes:
-      label: Goal and question
-      description: Explain what you are trying to accomplish and state the specific technical question.
+      label: Цель и вопрос
+      description: Объясните, чего вы хотите достичь, и сформулируйте конкретный технический вопрос.
     validations:
       required: true
 
   - type: textarea
     id: attempted
     attributes:
-      label: What have you tried?
-      description: Optionally include relevant files, commands, experiments, logs, screenshots, or a minimal example.
+      label: Что вы пробовали?
+      description: По желанию включите релевантные файлы, команды, эксперименты, логи, скриншоты или минимальный пример.
     validations:
       required: false

@@ -145,7 +145,7 @@ void EmoteDisplay::SetEmotion(const char* const emotion) {
 void EmoteDisplay::SetChatMessage(const char* const role, const char* const content) {
     ESP_LOGI(TAG, "SetChatMessage: %s, %s", role, content);
     if (emote_handle_ && content && strlen(content) > 0) {
-        if ((std::strcmp(role, "system") == 0) && std::strstr(content, "xiaozhi.me")) {
+        if ((std::strcmp(role, "system") == 0) && std::strstr(content, CONFIG_SUPPORT_WEBSITE)) {
             size_t len = strlen(content);
             char* new_content = new char[len + 1];
             strcpy(new_content, content);

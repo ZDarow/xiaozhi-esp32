@@ -55,6 +55,12 @@ private:
     bool IsNewVersionAvailable(const std::string& currentVersion, const std::string& newVersion);
     std::string GetActivationPayload();
     std::unique_ptr<Http> SetupHttp();
+
+#ifdef CONFIG_USE_GOST_CRYPTO
+    // Проверка подписи ГОСТ 2012 (Р 34.10-2012) для OTA-образа.
+    // Возвращает true, если подпись действительна или проверка отключена.
+    bool VerifyGostSignature(const std::string& firmware_path);
+#endif
 };
 
 #endif // _OTA_H

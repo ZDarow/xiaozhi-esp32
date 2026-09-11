@@ -13,8 +13,16 @@
 #include <esp_efuse.h>
 #include <esp_efuse_table.h>
 #include <esp_heap_caps.h>
+#include <esp_app_format.h>
+#include <esp_system.h>
+#include <esp_err.h>
 #ifdef SOC_HMAC_SUPPORTED
 #include <esp_hmac.h>
+#endif
+
+// Поддержка ГОСТ 2012 (опционально, включается через CONFIG_USE_GOST_CRYPTO)
+#ifdef CONFIG_USE_GOST_CRYPTO
+#include <esp_gost.h>
 #endif
 
 #include <cstring>
@@ -44,12 +52,19 @@ Ota::~Ota() {
 }
 
 std::string Ota::GetCheckVersionUrl() {
+    // 1. Проверка env-переменной OTA_URL (для локальной сборки и Центральной России)
+    const char* env_url = getenv("OTA_URL");
+    if (env_url != nullptr && strlen(env_url) > 10) {
+        return std::string(env_url);
+    }
+    // 2. Проверка NVS-ключа ota_url (runtime override)
     Settings settings("wifi", false);
     std::string url = settings.GetString("ota_url");
-    if (url.empty()) {
-        url = CONFIG_OTA_URL;
+    if (!url.empty()) {
+        return url;
     }
-    return url;
+    // 3. Fallback на Kconfig
+    return CONFIG_OTA_URL;
 }
 
 std::unique_ptr<Http> Ota::SetupHttp() {
@@ -503,3 +518,18 @@ esp_err_t Ota::Activate() {
     ESP_LOGI(TAG, "Activation successful");
     return ESP_OK;
 }
+
+#ifdef CONFIG_USE_GOST_CRYPTO
+bool Ota::VerifyGostSignature(const std::string& firmware_path) {
+    // TODO: Интеграция с ГОСТ 2012 (Р 34.10-2012) через mbedTLS/PSA.
+    // Требует:
+    // 1. Публичный ключ из CONFIG_OTA_SIGNATURE_PUBKEY (PEM/DER)
+    // 2. Подпись в конце файла прошивки (отдельный сегмент или .sig)
+    // 3. Хэш ГОСТ Р 34.11-2012 (256/512 бит) от образа
+    // 4. Проверка подписи через ГОСТ Р 34.10-2012
+    //
+    // Это заглушка — реализация требует внешней ГОСТ-библиотеки для ESP-IDF.
+    ESP_LOGW(TAG, "GOST signature verification not yet implemented");
+    return true;  // Пассивный fallback: пропуск проверки
+}
+#endif

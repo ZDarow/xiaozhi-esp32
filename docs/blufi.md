@@ -1,34 +1,34 @@
-# BluFi Provisioning (with `esp-wifi-connect`)
+# Провайдинг BluFi (с `esp-wifi-connect`)
 
-This document explains how to enable and use BluFi (BLE-based WiFi provisioning) in the XiaoZhi firmware, together with the in-tree `esp-wifi-connect` component that handles WiFi connection and credential storage. See the official [Espressif BluFi documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html) for the protocol details.
+Этот документ объясняет, как включить и использовать BluFi (провайдинг Wi-Fi по BLE) в прошивке XiaoZhi, вместе с в-tree компонентом `esp-wifi-connect`, который обрабатывает подключение Wi-Fi и хранение учётных данных. См. официальную [документацию Espressif BluFi](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/ble/blufi.html) для деталей протокола.
 
-## Prerequisites
+## Предпосылки
 
-- A chip and firmware configuration that support BLE.
-- In `idf.py menuconfig`, enable `WiFi Configuration Method -> ESP-BluFi` (`CONFIG_USE_ESP_BLUFI_WIFI_PROVISIONING=y`). If you want to use BluFi, disable the Hotspot option in the same menu; otherwise hotspot provisioning wins by default.
-- Keep the default NVS and event-loop initialization provided by the project's `app_main`.
-- Exactly one of `CONFIG_BT_BLUEDROID_ENABLED` / `CONFIG_BT_NIMBLE_ENABLED` must be selected; they are mutually exclusive.
+- Чип и конфигурация прошивки, поддерживающие BLE.
+- В `idf.py menuconfig` включите `Метод провайдинга Wi-Fi -> ESP-BluFi` (`CONFIG_USE_ESP_BLUFI_WIFI_PROVISIONING=y`). Если хотите использовать BluFi, отключите опцию точки доступа в том же меню; иначе провайдинг через точку доступа используется по умолчанию.
+- Сохраните стандартную инициализацию NVS и event-loop, предоставляемую `app_main` проекта.
+- Должен быть выбран ровно один из `CONFIG_BT_BLUEDROID_ENABLED` / `CONFIG_BT_NIMBLE_ENABLED`; они взаимно исключающие.
 
-## Workflow
+## Рабочий процесс
 
-1. A phone (using the official EspBlufi app or another BluFi client) connects to the device over BLE and sends the target WiFi SSID / password. The phone can also request the list of WiFi networks scanned by the device through the BluFi protocol.
-2. In `ESP_BLUFI_EVENT_REQ_CONNECT_TO_AP`, the device stores the credentials into `SsidManager` (persisted in NVS by the `esp-wifi-connect` component).
-3. The device then launches `WifiStation` to scan and connect; progress is reported back over BluFi.
-4. If provisioning succeeds, the device connects to the new WiFi automatically. If it fails, an error status is sent back.
+1. Телефон (с помощью официального приложения EspBlufi или другого клиента BluFi) подключается к устройству по BLE и отправляет целевой SSID / пароль Wi-Fi. Телефон также может запросить список сетей Wi-Fi, отсканированных устройством, через протокол BluFi.
+2. При событии `ESP_BLUFI_EVENT_REQ_CONNECT_TO_AP` устройство сохраняет учётные данные в `SsidManager` (персистентно в NVS компонентом `esp-wifi-connect`).
+3. Затем устройство запускает `WifiStation` для сканирования и подключения; прогресс передаётся обратно по BluFi.
+4. Если провайдинг успешен, устройство автоматически подключается к новой Wi-Fi. При ошибке отправляется статус ошибки.
 
-## Steps
+## Шаги
 
-1. **Configure**: turn on `ESP-BluFi` in menuconfig, then build and flash the firmware.
-2. **Trigger provisioning**: at first boot with no stored WiFi credentials the device enters provisioning automatically.
-3. **Phone side**: open the EspBlufi app (or another BluFi client), scan and connect to the device, optionally enable encryption, then enter the WiFi SSID / password and send them.
-4. **Observe the result**:
-   - Success: BluFi reports success and the device connects to WiFi.
-   - Failure: BluFi reports failure; retry or check the router.
+1. **Настройка**: включите `ESP-BluFi` в menuconfig, затем соберите и прошейте прошивку.
+2. **Запуск провайдинга**: при первой загрузке без сохранённых учётных записей Wi-Fi устройство автоматически входит в режим провайдинга.
+3. **Сторона телефона**: откройте приложение EspBlufi (или другой клиент BluFi), отсканируйте и подключитесь к устройству, при необходимости включите шифрование, затем введите SSID / пароль Wi-Fi и отправьте их.
+4. **Наблюдение результата**:
+   - Успех: BluFi сообщает об успехе, и устройство подключается к Wi-Fi.
+   - Ошибка: BluFi сообщает об ошибке; повторите попытку или проверьте роутер.
 
-## Notes
+## Примечания
 
-- BluFi cannot be used at the same time as hotspot provisioning. If hotspot provisioning is already enabled, the device will use it. Keep only one provisioning method in menuconfig.
-- When running repeated tests, clear or overwrite the stored SSID (`wifi` NVS namespace) to avoid stale credentials interfering with the next run.
-- If you write your own BluFi client, follow the official protocol frame format linked above.
-- The EspBlufi app download links are listed in the official documentation.
-- Because the BluFi API changed in IDF 5.5.2, firmware built with 5.5.2 advertises the Bluetooth name as `"Xiaozhi-Blufi"`, while 5.5.1 uses `"BLUFI_DEVICE"`.
+- BluFi нельзя использовать одновременно с провайдингом через точку доступа. Если провайдинг через точку доступа уже включён, устройство использует его. Держите включённым только один метод провайдинга в menuconfig.
+- При повторных тестах очищайте или перезаписывайте сохранённый SSID (NVS-пространство `wifi`), чтобы устаревшие учётные данные не мешали следующей сборке.
+- Если вы пишете собственный клиент BluFi, следуйте формату кадров протокола, по ссылке выше.
+- Ссылки для загрузки приложения EspBlufi указаны в официальной документации.
+- Поскольку API BluFi изменился в IDF 5.5.2, прошивка, собранная с 5.5.2, рекламирует имя Bluetooth как `"Xiaozhi-Blufi"`, тогда как 5.5.1 использует `"BLUFI_DEVICE"`.

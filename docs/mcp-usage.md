@@ -1,35 +1,38 @@
-# MCP IoT Control Usage
+# Использование MCP для IoT-управления
 
-> This document describes how to implement IoT control for ESP32 devices using the MCP protocol. For the detailed wire protocol, see [`mcp-protocol.md`](./mcp-protocol.md).
+> Этот документ описывает, как реализовать IoT-управление для устройств ESP32 с помощью протокола MCP.
+> Для подробного протокола передачи данных см. [`mcp-protocol.md`](./mcp-protocol.md).
 
-## Introduction
+## Введение
 
-MCP (Model Context Protocol) is the recommended protocol for IoT control in this project. It uses JSON-RPC 2.0 to let the backend discover and invoke "tools" registered by the device, giving you a flexible way to expose device functionality.
+MCP (Model Context Protocol) — рекомендуемый протокол IoT-управления в этом проекте. Он использует
+JSON-RPC 2.0, чтобы бэкенд мог обнаруживать и вызывать «инструменты», зарегистрированные устройством,
+предоставляя гибкий способ предоставления функциональности устройства.
 
-## Typical Flow
+## Типичный поток
 
-1. The device boots and connects to the backend over WebSocket or MQTT.
-2. The backend sends an `initialize` call to start the MCP session.
-3. The backend issues `tools/list` to discover available tools and their input schemas.
-4. The backend calls individual tools with `tools/call` to control the device.
+1. Устройство загружается и подключается к бэкенду по WebSocket или MQTT.
+2. Бэкенд отправляет вызов `initialize` для запуска сессии MCP.
+3. Бэкенд выдаёт `tools/list`, чтобы обнаружить доступные инструменты и их схемы ввода.
+4. Бэкенд вызывает отдельные инструменты с помощью `tools/call`, чтобы управлять устройством.
 
-See [`mcp-protocol.md`](./mcp-protocol.md) for the exact message format.
+См. [`mcp-protocol.md`](./mcp-protocol.md) для точного формата сообщений.
 
-## Registering Tools on the Device
+## Регистрация инструментов на устройстве
 
-Tools are registered through the `McpServer` singleton. There are two registration APIs:
+Инструменты регистрируются через синглтон `McpServer`. Есть два API регистрации:
 
-- `McpServer::AddTool` - regular tool, visible in the default `tools/list` response and callable by the AI model.
-- `McpServer::AddUserOnlyTool` - hidden tool, only returned when the backend lists tools with `withUserTools=true`. Use this for privileged or user-initiated actions (reboot, firmware upgrade, snapshots, etc.) that must not be invoked autonomously by the model.
+- `McpServer::AddTool` — обычный инструмент, видимый в ответе по умолчанию `tools/list` и вызываемый ИИ.
+- `McpServer::AddUserOnlyTool` — скрытый инструмент, возвращаемый только тогда, когда бэкенд запрашивает инструменты с `withUserTools=true`. Используйте для привилегированных или инициированных пользователем действий (перезагрузка, обновление прошивки, снимки экрана и т.д.), которые не должны вызываться автономно ИИ.
 
-Both APIs share the same signature:
+Оба API имеют одинаковую сигнатуру:
 
 ```cpp
 void AddTool(
-    const std::string& name,           // unique tool name, e.g. self.dog.forward
-    const std::string& description,    // short description for the model
-    const PropertyList& properties,    // input parameters (may be empty); supported types: bool, int, string
-    std::function<ReturnValue(const PropertyList&)> callback // implementation
+    const std::string& name,         // уникальное имя инструмента, напр. self.dog.forward
+    const std::string& description,  // краткое описание для модели
+    const PropertyList& properties,  // входные параметры (могут быть пустыми); поддерживаемые типы: bool, int, string
+    std::function<ReturnValue(const PropertyList&)> callback // реализация
 );
 
 void AddUserOnlyTool(
@@ -40,18 +43,18 @@ void AddUserOnlyTool(
 );
 ```
 
-- `name` - unique identifier. A `module.action` naming style works well.
-- `description` - natural-language description; used by the AI to decide when to call the tool.
-- `properties` - input parameters. Supported property types are boolean, integer, and string, with optional min/max and default values.
-- `callback` - implementation. Return values may be `bool`, `int`, or `std::string`.
+- `name` — уникальный идентификатор. Стиль именования `module.action` работает хорошо.
+- `description` — описание на естественном языке; используется ИИ для принятия решения о вызове.
+- `properties` — входные параметры. Поддерживаемые типы свойств: boolean, integer, string, с необязательными минимум/максимум и значениями по умолчанию.
+- `callback` — реализация. Возвращаемые значения могут быть `bool`, `int` или `std::string`.
 
-## Example (ESP-Hi)
+## Пример (ESP-Hi)
 
 ```cpp
 void InitializeTools() {
     auto& mcp_server = McpServer::GetInstance();
 
-    // Example 1: no arguments - move the robot forward
+    // Пример 1: без аргументов — движение робота вперёд
     mcp_server.AddTool("self.dog.forward",
         "Move the robot forward",
         PropertyList(),
@@ -60,7 +63,7 @@ void InitializeTools() {
             return true;
         });
 
-    // Example 2: with arguments - set RGB light color
+    // Пример 2: с аргументами — установка цвета RGB-света
     mcp_server.AddTool("self.light.set_rgb",
         "Set the RGB color of the light",
         PropertyList({
@@ -79,7 +82,7 @@ void InitializeTools() {
 }
 ```
 
-## Example - Registering a User-only Tool
+## Пример — регистрация пользовательского инструмента
 
 ```cpp
 mcp_server.AddUserOnlyTool("self.display.clear_cache",
@@ -91,41 +94,42 @@ mcp_server.AddUserOnlyTool("self.display.clear_cache",
     });
 ```
 
-A tool registered this way will not appear in a regular `tools/list` response. The backend must set `params.withUserTools = true` to see it.
+Инструмент, зарегистрированный таким образом, не появится в обычном ответе `tools/list`.
+Бэкенд должен установить `params.withUserTools = true`, чтобы увидеть его.
 
-## Built-in Tools
+## Встроенные инструменты
 
-`McpServer::AddCommonTools` and `McpServer::AddUserOnlyTools` register a number of tools automatically:
+`McpServer::AddCommonTools` и `McpServer::AddUserOnlyTools` автоматически регистрируют ряд инструментов:
 
-### Default (AI-callable) tools - from `AddCommonTools`
+### Обычные инструменты (вызываемые ИИ) — из `AddCommonTools`
 
-| Tool | Description |
+| Инструмент | Описание |
 |------|-------------|
-| `self.get_device_status` | Returns the current volume, screen, battery, network, etc. |
-| `self.audio_speaker.set_volume` | Set speaker volume (`volume`: 0-100). |
-| `self.screen.set_brightness` | Set screen brightness when a backlight is available (`brightness`: 0-100). |
-| `self.screen.set_theme` | Switch UI theme (`theme`: `"light"` or `"dark"`), when LVGL is enabled. |
-| `self.camera.take_photo` | Take a picture with the on-board camera (when the board has one) and answer the given `question` about it. |
+| `self.get_device_status` | Возвращает текущую громкость, экран, батарею, сеть и т.д. |
+| `self.audio_speaker.set_volume` | Установить громкость динамика (`volume`: 0-100). |
+| `self.screen.set_brightness` | Установить яркость экрана при наличии подсветки (`brightness`: 0-100). |
+| `self.screen.set_theme` | Переключить тему UI (`theme`: `"light"` или `"dark"`), когда включён LVGL. |
+| `self.camera.take_photo` | Сделать фото с встроенной камеры (если плата её имеет) и ответить на заданный `question` по ней. |
 
-Board-specific tools are appended after these by each board's `InitializeTools()`.
+Специфичные для платы инструменты добавляются после этих в `InitializeTools()` каждой платы.
 
-### User-only tools - from `AddUserOnlyTools`
+### Пользовательские инструменты — из `AddUserOnlyTools`
 
-These tools are hidden by default. The backend must pass `withUserTools=true` to `tools/list` to see them. They are intended for companion apps / end users rather than the AI model.
+Эти инструменты скрыты по умолчанию. Бэкенд должен передать `withUserTools=true` в `tools/list`, чтобы увидеть их. Они предназначены для приложений-компаньонов / конечных пользователей, а не для ИИ.
 
-| Tool | Description |
+| Инструмент | Описание |
 |------|-------------|
-| `self.get_system_info` | Return a JSON blob describing the system. |
-| `self.reboot` | Reboot the device after a short delay. |
-| `self.upgrade_firmware` | Download firmware from `url` and install it, then reboot. |
-| `self.screen.get_info` | Return the current screen width, height, and whether it is monochrome (LVGL boards only). |
-| `self.screen.snapshot` | Snapshot the screen as JPEG and upload it to `url` (LVGL boards, when `CONFIG_LV_USE_SNAPSHOT=y`). |
-| `self.screen.preview_image` | Download and display an image from `url` on the screen. |
-| `self.assets.set_download_url` | Set the download URL for the assets partition. |
+| `self.get_system_info` | Возвращает JSON-объект с описанием системы. |
+| `self.reboot` | Перезагружает устройство через короткую задержку. |
+| `self.upgrade_firmware` | Скачивает прошивку с `url` и устанавливает, затем перезагружается. |
+| `self.screen.get_info` | Возвращает текущую ширину, высоту экрана и признак монохромности (только LVGL-платы). |
+| `self.screen.snapshot` | Делает снимок экрана в JPEG и загружает на `url` (LVGL-платы, когда `CONFIG_LV_USE_SNAPSHOT=y`). |
+| `self.screen.preview_image` | Скачивает и отображает изображение с `url` на экране. |
+| `self.assets.set_download_url` | Устанавливает URL загрузки для раздела ассетов. |
 
-## JSON-RPC Examples
+## Примеры JSON-RPC
 
-### 1. Get the tools list
+### 1. Получить список инструментов
 
 ```json
 {
@@ -136,7 +140,7 @@ These tools are hidden by default. The backend must pass `withUserTools=true` to
 }
 ```
 
-### 2. Move the chassis forward
+### 2. Движение шасси вперёд
 
 ```json
 {
@@ -150,7 +154,7 @@ These tools are hidden by default. The backend must pass `withUserTools=true` to
 }
 ```
 
-### 3. Switch the light mode
+### 3. Переключение режима света
 
 ```json
 {
@@ -164,7 +168,7 @@ These tools are hidden by default. The backend must pass `withUserTools=true` to
 }
 ```
 
-### 4. Reboot the device (user-only)
+### 4. Перезагрузка устройства (пользовательский инструмент)
 
 ```json
 {
@@ -178,8 +182,8 @@ These tools are hidden by default. The backend must pass `withUserTools=true` to
 }
 ```
 
-## Notes
+## Примечания
 
-- Tool names, parameters, and return values must match what the device registers via `AddTool` / `AddUserOnlyTool`.
-- Prefer MCP for any new IoT control.
-- For the wire protocol and advanced topics, see [`mcp-protocol.md`](./mcp-protocol.md).
+- Имена инструментов, параметры и возвращаемые значения должны совпадать с тем, что устройство регистрирует через `AddTool` / `AddUserOnlyTool`.
+- Предпочитайте MCP для любого нового IoT-управления.
+- Для протокола передачи данных и продвинутых тем см. [`mcp-protocol.md`](./mcp-protocol.md).
