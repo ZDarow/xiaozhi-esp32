@@ -1,18 +1,18 @@
-#include "rndis_board.h"
-#include "codecs/box_audio_codec.h"
-#include "display/lcd_display.h"
 #include "application.h"
-#include "button.h"
-#include "config.h"
-#include "i2c_device.h"
 #include "assets/lang_config.h"
+#include "button.h"
+#include "codecs/box_audio_codec.h"
+#include "config.h"
+#include "display/lcd_display.h"
+#include "i2c_device.h"
+#include "rndis_board.h"
 
-#include <esp_log.h>
-#include <esp_lcd_panel_vendor.h>
-#include <esp_io_expander_tca9554.h>
-#include <esp_lcd_ili9341.h>
 #include <driver/i2c_master.h>
 #include <driver/spi_common.h>
+#include <esp_io_expander_tca9554.h>
+#include <esp_lcd_ili9341.h>
+#include <esp_lcd_panel_vendor.h>
+#include <esp_log.h>
 #include "esp32_camera.h"
 #include "power_manager.h"
 #include "power_save_timer.h"
@@ -31,26 +31,32 @@ typedef enum {
 
 // Init ili9341 by custom cmd
 static const ili9341_lcd_init_cmd_t vendor_specific_init[] = {
-    {0xC8, (uint8_t []){0xFF, 0x93, 0x42}, 3, 0},
-    {0xC0, (uint8_t []){0x0E, 0x0E}, 2, 0},
-    {0xC5, (uint8_t []){0xD0}, 1, 0},
-    {0xC1, (uint8_t []){0x02}, 1, 0},
-    {0xB4, (uint8_t []){0x02}, 1, 0},
-    {0xE0, (uint8_t []){0x00, 0x03, 0x08, 0x06, 0x13, 0x09, 0x39, 0x39, 0x48, 0x02, 0x0a, 0x08, 0x17, 0x17, 0x0F}, 15, 0},
-    {0xE1, (uint8_t []){0x00, 0x28, 0x29, 0x01, 0x0d, 0x03, 0x3f, 0x33, 0x52, 0x04, 0x0f, 0x0e, 0x37, 0x38, 0x0F}, 15, 0},
+    {0xC8, (uint8_t[]){0xFF, 0x93, 0x42}, 3, 0},
+    {0xC0, (uint8_t[]){0x0E, 0x0E}, 2, 0},
+    {0xC5, (uint8_t[]){0xD0}, 1, 0},
+    {0xC1, (uint8_t[]){0x02}, 1, 0},
+    {0xB4, (uint8_t[]){0x02}, 1, 0},
+    {0xE0,
+     (uint8_t[]){0x00, 0x03, 0x08, 0x06, 0x13, 0x09, 0x39, 0x39, 0x48, 0x02, 0x0a, 0x08, 0x17, 0x17,
+                 0x0F},
+     15, 0},
+    {0xE1,
+     (uint8_t[]){0x00, 0x28, 0x29, 0x01, 0x0d, 0x03, 0x3f, 0x33, 0x52, 0x04, 0x0f, 0x0e, 0x37, 0x38,
+                 0x0F},
+     15, 0},
 
-    {0xB1, (uint8_t []){00, 0x1B}, 2, 0},
-    {0x36, (uint8_t []){0x08}, 1, 0},
-    {0x3A, (uint8_t []){0x55}, 1, 0},
-    {0xB7, (uint8_t []){0x06}, 1, 0},
+    {0xB1, (uint8_t[]){00, 0x1B}, 2, 0},
+    {0x36, (uint8_t[]){0x08}, 1, 0},
+    {0x3A, (uint8_t[]){0x55}, 1, 0},
+    {0xB7, (uint8_t[]){0x06}, 1, 0},
 
-    {0x11, (uint8_t []){0}, 0x80, 0},
-    {0x29, (uint8_t []){0}, 0x80, 0},
+    {0x11, (uint8_t[]){0}, 0x80, 0},
+    {0x29, (uint8_t[]){0}, 0x80, 0},
 
-    {0, (uint8_t []){0}, 0xff, 0},
+    {0, (uint8_t[]){0}, 0xff, 0},
 };
 
-// https://github.com/78/xiaozhi-esp32/pull/1655
+// https://github.com/ZDarow/xiaozhi-esp32/pull/1655
 class Esp32S3Korvo2V3Board : public RndisBoard {
 private:
     Button boot_button_;
@@ -69,15 +75,11 @@ private:
         // 传入按钮的ADC句柄指针，让PowerManager复用
         power_manager_ = new PowerManager(GPIO_NUM_NC, &bsp_adc_handle);
     }
-    
+
     void InitializePowerSaveTimer() {
         power_save_timer_ = new PowerSaveTimer(-1, 60);
-        power_save_timer_->OnEnterSleepMode([this]() {
-            GetDisplay()->SetPowerSaveMode(true);
-        });
-        power_save_timer_->OnExitSleepMode([this]() {
-            GetDisplay()->SetPowerSaveMode(false);
-        });
+        power_save_timer_->OnEnterSleepMode([this]() { GetDisplay()->SetPowerSaveMode(true); });
+        power_save_timer_->OnExitSleepMode([this]() { GetDisplay()->SetPowerSaveMode(false); });
         power_save_timer_->SetEnabled(true);
     }
 
@@ -91,9 +93,10 @@ private:
             .glitch_ignore_cnt = 7,
             .intr_priority = 0,
             .trans_queue_depth = 0,
-            .flags = {
-                .enable_internal_pullup = 1,
-            },
+            .flags =
+                {
+                    .enable_internal_pullup = 1,
+                },
         };
         ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_cfg, &i2c_bus_));
     }
@@ -120,34 +123,39 @@ private:
     }
 
     void InitializeTca9554() {
-        esp_err_t ret = esp_io_expander_new_i2c_tca9554(i2c_bus_, ESP_IO_EXPANDER_I2C_TCA9554_ADDRESS_000, &io_expander_);
-        if(ret != ESP_OK) {
-            ret = esp_io_expander_new_i2c_tca9554(i2c_bus_, ESP_IO_EXPANDER_I2C_TCA9554A_ADDRESS_000, &io_expander_);
-            if(ret != ESP_OK) {
-                ESP_LOGE(TAG, "TCA9554 create returned error");  
+        esp_err_t ret = esp_io_expander_new_i2c_tca9554(
+            i2c_bus_, ESP_IO_EXPANDER_I2C_TCA9554_ADDRESS_000, &io_expander_);
+        if (ret != ESP_OK) {
+            ret = esp_io_expander_new_i2c_tca9554(
+                i2c_bus_, ESP_IO_EXPANDER_I2C_TCA9554A_ADDRESS_000, &io_expander_);
+            if (ret != ESP_OK) {
+                ESP_LOGE(TAG, "TCA9554 create returned error");
                 return;
             }
         }
         // 配置IO0-IO3为输出模式
-        ESP_ERROR_CHECK(esp_io_expander_set_dir(io_expander_, 
-            IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 | 
-            IO_EXPANDER_PIN_NUM_2 | IO_EXPANDER_PIN_NUM_3, 
-            IO_EXPANDER_OUTPUT));
+        ESP_ERROR_CHECK(esp_io_expander_set_dir(io_expander_,
+                                                IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 |
+                                                    IO_EXPANDER_PIN_NUM_2 | IO_EXPANDER_PIN_NUM_3,
+                                                IO_EXPANDER_OUTPUT));
 
         // 复位LCD和TouchPad
-        ESP_ERROR_CHECK(esp_io_expander_set_level(io_expander_,
-            IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 | IO_EXPANDER_PIN_NUM_2, 1));
+        ESP_ERROR_CHECK(esp_io_expander_set_level(
+            io_expander_, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 | IO_EXPANDER_PIN_NUM_2,
+            1));
         vTaskDelay(pdMS_TO_TICKS(300));
-        ESP_ERROR_CHECK(esp_io_expander_set_level(io_expander_,
-            IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 | IO_EXPANDER_PIN_NUM_2, 0));
+        ESP_ERROR_CHECK(esp_io_expander_set_level(
+            io_expander_, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 | IO_EXPANDER_PIN_NUM_2,
+            0));
         vTaskDelay(pdMS_TO_TICKS(300));
-        ESP_ERROR_CHECK(esp_io_expander_set_level(io_expander_,
-            IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 | IO_EXPANDER_PIN_NUM_2, 1));
+        ESP_ERROR_CHECK(esp_io_expander_set_level(
+            io_expander_, IO_EXPANDER_PIN_NUM_0 | IO_EXPANDER_PIN_NUM_1 | IO_EXPANDER_PIN_NUM_2,
+            1));
     }
 
     void EnableLcdCs() {
-        if(io_expander_ != NULL) {
-            esp_io_expander_set_level(io_expander_, IO_EXPANDER_PIN_NUM_3, 0);// 置低 LCD CS
+        if (io_expander_ != NULL) {
+            esp_io_expander_set_level(io_expander_, IO_EXPANDER_PIN_NUM_3, 0);  // 置低 LCD CS
         }
     }
 
@@ -180,7 +188,7 @@ private:
         auto volume = codec->output_volume();
         if (volume > 1) {
             volume = 0;
-        } else  {
+        } else {
             volume = 50;
         }
         codec->SetOutputVolume(volume);
@@ -188,8 +196,8 @@ private:
     }
 
     void InitializeButtons() {
-         button_adc_config_t adc_cfg = {};
-        adc_cfg.adc_channel = ADC_CHANNEL_4; // ADC1 channel 0 is GPIO5
+        button_adc_config_t adc_cfg = {};
+        adc_cfg.adc_channel = ADC_CHANNEL_4;  // ADC1 channel 0 is GPIO5
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
         const adc_oneshot_unit_init_cfg_t init_config1 = {
             .unit_id = ADC_UNIT_1,
@@ -198,65 +206,60 @@ private:
         adc_cfg.adc_handle = &bsp_adc_handle;
 #endif
         adc_cfg.button_index = BSP_ADC_BUTTON_REC;
-        adc_cfg.min = 2310; // middle is 2410mV
+        adc_cfg.min = 2310;  // middle is 2410mV
         adc_cfg.max = 2510;
         adc_button_[0] = new AdcButton(adc_cfg);
 
         adc_cfg.button_index = BSP_ADC_BUTTON_VOL_MUTE;
-        adc_cfg.min = 1880; // middle is 1980mV
+        adc_cfg.min = 1880;  // middle is 1980mV
         adc_cfg.max = 2080;
         adc_button_[1] = new AdcButton(adc_cfg);
 
         adc_cfg.button_index = BSP_ADC_BUTTON_PLAY;
-        adc_cfg.min = 1550; // middle is 1650mV
+        adc_cfg.min = 1550;  // middle is 1650mV
         adc_cfg.max = 1750;
         adc_button_[2] = new AdcButton(adc_cfg);
 
         adc_cfg.button_index = BSP_ADC_BUTTON_SET;
-        adc_cfg.min = 1015; // middle is 1115mV
+        adc_cfg.min = 1015;  // middle is 1115mV
         adc_cfg.max = 1215;
         adc_button_[3] = new AdcButton(adc_cfg);
 
         adc_cfg.button_index = BSP_ADC_BUTTON_VOL_DOWN;
-        adc_cfg.min = 720; // middle is 820mV
+        adc_cfg.min = 720;  // middle is 820mV
         adc_cfg.max = 920;
         adc_button_[4] = new AdcButton(adc_cfg);
 
         adc_cfg.button_index = BSP_ADC_BUTTON_VOL_UP;
-        adc_cfg.min = 280; // middle is 380mV
+        adc_cfg.min = 280;  // middle is 380mV
         adc_cfg.max = 480;
         adc_button_[5] = new AdcButton(adc_cfg);
 
         auto volume_up_button = adc_button_[BSP_ADC_BUTTON_VOL_UP];
-        volume_up_button->OnClick([this]() {ChangeVol(10);});
+        volume_up_button->OnClick([this]() { ChangeVol(10); });
         volume_up_button->OnLongPress([this]() {
             GetAudioCodec()->SetOutputVolume(100);
             GetDisplay()->ShowNotification(Lang::Strings::MAX_VOLUME);
         });
 
         auto volume_down_button = adc_button_[BSP_ADC_BUTTON_VOL_DOWN];
-        volume_down_button->OnClick([this]() {ChangeVol(-10);});
+        volume_down_button->OnClick([this]() { ChangeVol(-10); });
         volume_down_button->OnLongPress([this]() {
             GetAudioCodec()->SetOutputVolume(0);
             GetDisplay()->ShowNotification(Lang::Strings::MUTED);
         });
 
         auto volume_mute_button = adc_button_[BSP_ADC_BUTTON_VOL_MUTE];
-        volume_mute_button->OnClick([this]() {MuteVol();});
+        volume_mute_button->OnClick([this]() { MuteVol(); });
 
         auto play_button = adc_button_[BSP_ADC_BUTTON_PLAY];
-        play_button->OnClick([this]() {
-             ESP_LOGI(TAG, " TODO %s:%d\n", __func__, __LINE__);
-        });
+        play_button->OnClick([this]() { ESP_LOGI(TAG, " TODO %s:%d\n", __func__, __LINE__); });
 
         auto set_button = adc_button_[BSP_ADC_BUTTON_SET];
-        set_button->OnClick([this]() {
-        });
+        set_button->OnClick([this]() {});
 
         auto rec_button = adc_button_[BSP_ADC_BUTTON_REC];
-        rec_button->OnClick([this]() {
-             Application::GetInstance().ToggleChatState();
-        });
+        rec_button->OnClick([this]() { Application::GetInstance().ToggleChatState(); });
         boot_button_.OnClick([this]() {});
         boot_button_.OnClick([this]() {
             auto& app = Application::GetInstance();
@@ -301,9 +304,9 @@ private:
         // panel_config.flags.reset_active_high = 0,
         panel_config.rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB;
         panel_config.bits_per_pixel = 16;
-        panel_config.vendor_config = (void *)&vendor_config;
+        panel_config.vendor_config = (void*)&vendor_config;
         ESP_ERROR_CHECK(esp_lcd_new_panel_ili9341(panel_io, &panel_config, &panel));
-        
+
         ESP_ERROR_CHECK(esp_lcd_panel_reset(panel));
         EnableLcdCs();
         ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
@@ -311,8 +314,9 @@ private:
         ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y));
         ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel, false));
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));
-        display_ = new SpiLcdDisplay(panel_io, panel,
-                                    DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
+        display_ = new SpiLcdDisplay(panel_io, panel, DISPLAY_WIDTH, DISPLAY_HEIGHT,
+                                     DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X,
+                                     DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
     }
 
     void InitializeSt7789Display() {
@@ -344,8 +348,9 @@ private:
         ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y));
         ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel, true));
 
-        display_ = new SpiLcdDisplay(panel_io, panel,
-                                     DISPLAY_WIDTH, DISPLAY_HEIGHT, DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X, DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
+        display_ = new SpiLcdDisplay(panel_io, panel, DISPLAY_WIDTH, DISPLAY_HEIGHT,
+                                     DISPLAY_OFFSET_X, DISPLAY_OFFSET_Y, DISPLAY_MIRROR_X,
+                                     DISPLAY_MIRROR_Y, DISPLAY_SWAP_XY);
     }
 
     void InitializeCamera() {
@@ -353,7 +358,7 @@ private:
             .pin_pwdn = CAMERA_PIN_PWDN,
             .pin_reset = CAMERA_PIN_RESET,
             .pin_xclk = CAMERA_PIN_XCLK,
-            .pin_sccb_sda = -1, // Use initialized I2C
+            .pin_sccb_sda = -1,  // Use initialized I2C
             .pin_sccb_scl = -1,
             .pin_d7 = CAMERA_PIN_D7,
             .pin_d6 = CAMERA_PIN_D6,
@@ -392,38 +397,26 @@ public:
         InitializeTca9554();
         InitializeCamera();
         InitializeSpi();
-        InitializeButtons();  // 先初始化按钮（创建ADC1句柄）
+        InitializeButtons();       // 先初始化按钮（创建ADC1句柄）
         InitializePowerManager();  // 后初始化PowerManager（复用ADC1句柄）
-        #ifdef LCD_TYPE_ILI9341_SERIAL
-        InitializeIli9341Display(); 
-        #else
-        InitializeSt7789Display(); 
-        #endif
+#ifdef LCD_TYPE_ILI9341_SERIAL
+        InitializeIli9341Display();
+#else
+        InitializeSt7789Display();
+#endif
     }
 
     virtual AudioCodec* GetAudioCodec() override {
         static BoxAudioCodec audio_codec(
-            i2c_bus_, 
-            AUDIO_INPUT_SAMPLE_RATE, 
-            AUDIO_OUTPUT_SAMPLE_RATE,
-            AUDIO_I2S_GPIO_MCLK, 
-            AUDIO_I2S_GPIO_BCLK, 
-            AUDIO_I2S_GPIO_WS, 
-            AUDIO_I2S_GPIO_DOUT, 
-            AUDIO_I2S_GPIO_DIN,
-            AUDIO_CODEC_PA_PIN, 
-            AUDIO_CODEC_ES8311_ADDR, 
-            AUDIO_CODEC_ES7210_ADDR, 
+            i2c_bus_, AUDIO_INPUT_SAMPLE_RATE, AUDIO_OUTPUT_SAMPLE_RATE, AUDIO_I2S_GPIO_MCLK,
+            AUDIO_I2S_GPIO_BCLK, AUDIO_I2S_GPIO_WS, AUDIO_I2S_GPIO_DOUT, AUDIO_I2S_GPIO_DIN,
+            AUDIO_CODEC_PA_PIN, AUDIO_CODEC_ES8311_ADDR, AUDIO_CODEC_ES7210_ADDR,
             AUDIO_INPUT_REFERENCE);
         return &audio_codec;
     }
 
-    virtual Display *GetDisplay() override {
-        return display_;
-    }
-    virtual Camera* GetCamera() override {
-        return camera_;
-    }
+    virtual Display* GetDisplay() override { return display_; }
+    virtual Camera* GetCamera() override { return camera_; }
     virtual bool GetBatteryLevel(int& level, bool& charging, bool& discharging) override {
         static bool last_discharging = false;
         charging = power_manager_->IsCharging();
@@ -440,6 +433,21 @@ public:
         if (level != PowerSaveLevel::LOW_POWER) {
             power_save_timer_->WakeUp();
         }
+    }
+
+    ~Esp32S3Korvo2V3Board() {
+        for (int i = 0; i < BSP_ADC_BUTTON_NUM; i++) {
+            delete adc_button_[i];
+            adc_button_[i] = nullptr;
+        }
+        delete camera_;
+        camera_ = nullptr;
+        delete display_;
+        display_ = nullptr;
+        delete power_save_timer_;
+        power_save_timer_ = nullptr;
+        delete power_manager_;
+        power_manager_ = nullptr;
     }
 };
 
