@@ -1,6 +1,6 @@
 # Голосовой чат-бот на базе MCP
 
-(Русский | [English](README.md) | [中文](README_zh.md) | [日本語](README_ja.md))
+(Русский | [中文](README_zh.md) | [日本語](README_ja.md))
 
 ## Введение
 
@@ -14,7 +14,7 @@
 
 ## Последние обновления
 
-- Проект теперь требует ESP-IDF v6.0.1 или новее. [ESP-IDF v6.1](https://github.com/espressif/esp-idf/releases/tag/v6.1) — рекомендуемый SDK. ESP-IDF 5.x больше не поддерживается. Текущая матрица содержит 171 вариантов; сборка ESP32-S31 требует IDF 6.1 или новее.
+- Проект теперь требует ESP-IDF v6.0.1 или новее. [ESP-IDF v6.1](https://github.com/espressif/esp-idf/releases/tag/v6.1) — рекомендуемый SDK. ESP-IDF 5.x больше не поддерживается. Текущая матрица содержит 171 вариант; сборка ESP32-S31 требует IDF 6.1 или новее.
 - Криптографический код MQTT и BluFi перенесён на PSA Crypto. Разделение компонентов IDF 6 и совместимость сторонних зависимостей также учтены.
 - Конвейер аудио, конкуренция, проверка пакетов MQTT/UDP и выбор матрицы релизов усилены.
 - ESP32-P4 Rev1 и Rev3 обе поддерживаются на IDF 6 с ESP-SR 2.4.7.
@@ -33,9 +33,28 @@
 - Настройка Wi-Fi через точку доступа или BluFi
 - Устройственный MCP для управления устройствами (Динамик, LED, Серво, GPIO и т.д.)
 - Облачный MCP для расширения возможностей больших моделей (умный дом, управление ПК, поиск знаний, email и т.д.)
-- Настраиваемые слова активации, шрифты, эмодзи и фоны чата с онлайн-редактированием на веб-основе ([Генератор кастомных ассетов](https://github.com/78/xiaozhi-assets-generator))
+- Настраиваемые слова активации, шрифты, эмодзи и фоны чата с онлайн-редактированием на веб-основе ([Генератор кастомных ассетов](https://github.com/ZDarow/xiaozhi-assets-generator))
 
-## Оборудование
+## Лицензия
+
+Данный проект распространяется под лицензией [MIT](LICENSE).
+
+## Поддерживаемые платы
+
+| Чип | Минимальная версия ESP-IDF | PSRAM | Flash | Примечания |
+|-----|---------------------------|-------|-------|------------|
+| ESP32 | v6.0.1 | Не требуется | 16 МБ | Базовая поддержка |
+| ESP32-S3 | v6.0.1 | 8 МБ (рекомендуется) | 16 МБ | Аппаратное ускорение |
+| ESP32-C3 | v6.0.1 | Не требуется | 16 МБ | Wi-Fi, Bluetooth |
+| ESP32-C5 | v6.0.1 | Не требуется | 16 МБ | Wi-Fi 6 |
+| ESP32-C6 | v6.0.1 | Не требуется | 16 МБ | Wi-Fi 6, Bluetooth 5 |
+| ESP32-P4 | v6.1 | 8 МБ | 16 МБ | ESP-SR 2.4.7 |
+
+## Поддержка
+
+- 📧 [Служба поддержки](.github/SUPPORT.md)
+- 📚 [Документация](docs/)
+- 🐙 [GitHub репозиторий](https://github.com/ZDarow/xiaozhi-esp32)
 
 ### Практика на макетной плате
 
@@ -145,13 +164,13 @@
 
 - [huangjunsen0406/py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) — Python клиент
 - [TOM88812/xiaozhi-android-client](https://github.com/TOM88812/xiaozhi-android-client) — Android клиент
-- [100askTeam/xiaozhi-linux](http://github.com/100askTeam/xiaozhi-linux) — Linux клиент от 100ask
-- [78/xiaozhi-sf32](https://github.com/78/xiaozhi-sf32) — прошивка Bluetooth-чипа от Sichuan
+- [100askTeam/xiaozhi-linux](https://github.com/100askTeam/xiaozhi-linux) — Linux клиент от 100ask
+- [ZDarow/xiaozhi-sf32](https://github.com/ZDarow/xiaozhi-sf32) — прошивка Bluetooth-чипа от Sichuan
 - [QuecPython/solution-xiaozhiAI](https://github.com/QuecPython/solution-xiaozhiAI) — прошивка QuecPython от Quectel
 
 Инструменты кастомных ассетов:
 
-- [78/xiaozhi-assets-generator](https://github.com/78/xiaozhi-assets-generator) — Генератор кастомных ассетов (слова активации, шрифты, эмодзи, фоны)
+- [ZDarow/xiaozhi-assets-generator](https://github.com/ZDarow/xiaozhi-assets-generator) — Генератор кастомных ассетов (слова активации, шрифты, эмодзи, фоны)
 
 ## О проекте
 
@@ -163,10 +182,10 @@
 
 ## История звёзд
 
-<a href="https://star-history.com/#78/xiaozhi-esp32&Date">
+<a href="https://star-history.com/#ZDarow/xiaozhi-esp32&Date">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date" />
-    <img alt="График истории звёзд" src="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ZDarow/xiaozhi-esp32&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ZDarow/xiaozhi-esp32&type=Date" />
+    <img alt="График истории звёзд" src="https://api.star-history.com/svg?repos=ZDarow/xiaozhi-esp32&type=Date" />
   </picture>
 </a>

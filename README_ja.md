@@ -1,6 +1,6 @@
 # MCP ベースのチャットボット
 
-（日本語 | [中文](README_zh.md) | [English](README.md)）
+（日本語 | [中文](README_zh.md)）
 
 ## はじめに
 
@@ -33,7 +33,7 @@
 - ホットスポットまたはBluFiによるWi-Fiプロビジョニング
 - デバイス側MCPによるデバイス制御（音量・明るさ調整、アクション制御など）
 - クラウド側MCPで大規模モデル能力を拡張（スマートホーム制御、PCデスクトップ操作、知識検索、メール送受信など）
-- カスタマイズ可能なウェイクワード、フォント、絵文字、チャット背景、オンラインWeb編集に対応 ([カスタムアセットジェネレーター](https://github.com/78/xiaozhi-assets-generator))
+- カスタマイズ可能なウェイクワード、フォント、絵文字、チャット背景、オンラインWeb編集に対応 ([カスタムアセットジェネレーター](https://github.com/ZDarow/xiaozhi-assets-generator))
 
 ## ハードウェア
 
@@ -145,8 +145,8 @@ Feishuドキュメントチュートリアルをご覧ください：
 
 - [huangjunsen0406/py-xiaozhi](https://github.com/huangjunsen0406/py-xiaozhi) Pythonクライアント
 - [TOM88812/xiaozhi-android-client](https://github.com/TOM88812/xiaozhi-android-client) Androidクライアント
-- [100askTeam/xiaozhi-linux](http://github.com/100askTeam/xiaozhi-linux) 百問科技提供のLinuxクライアント
-- [78/xiaozhi-sf32](https://github.com/78/xiaozhi-sf32) 思澈科技のBluetoothチップファームウェア
+- [100askTeam/xiaozhi-linux](https://github.com/100askTeam/xiaozhi-linux) 百問科技提供のLinuxクライアント
+- [ZDarow/xiaozhi-sf32](https://github.com/ZDarow/xiaozhi-sf32) 思澈科技のBluetoothチップファームウェア
 - [QuecPython/solution-xiaozhiAI](https://github.com/QuecPython/solution-xiaozhiAI) 移遠提供のQuecPythonファームウェア
 
 ## プロジェクトについて
@@ -159,10 +159,10 @@ Feishuドキュメントチュートリアルをご覧ください：
 
 ## スター履歴
 
-<a href="https://star-history.com/#78/xiaozhi-esp32&Date">
+<a href="https://star-history.com/#ZDarow/xiaozhi-esp32&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=78/xiaozhi-esp32&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=ZDarow/xiaozhi-esp32&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=ZDarow/xiaozhi-esp32&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=ZDarow/xiaozhi-esp32&type=Date" />
  </picture>
 </a> 

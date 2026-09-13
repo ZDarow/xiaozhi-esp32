@@ -3,7 +3,7 @@
 Download GitHub Actions artifacts and rename them with version numbers.
 
 Usage:
-    python download_github_runs.py 2.0.4 https://github.com/78/xiaozhi-esp32/actions/runs/18866246016
+    python download_github_runs.py 2.0.4 https://github.com/ZDarow/xiaozhi-esp32/actions/runs/18866246016
 
 Output:
     Files are downloaded to releases/<version>/ directory relative to the project root.
@@ -32,7 +32,7 @@ def parse_github_run_url(url: str) -> tuple[str, str, str]:
     Returns:
         Tuple of (owner, repo, run_id)
     """
-    # Example: https://github.com/78/xiaozhi-esp32/actions/runs/18866246016
+    # Example: https://github.com/ZDarow/xiaozhi-esp32/actions/runs/18866246016
     pattern = r'github\.com/([^/]+)/([^/]+)/actions/runs/(\d+)'
     match = re.search(pattern, url)
     

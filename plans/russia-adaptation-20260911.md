@@ -20,14 +20,14 @@
 #### 1.1 Полный аудит китайских сервисов (30 мин)
 ```bash
 # Поиск всех вхождений
-grep -r "tenclass\|api.tenclass\|xiaozhi.me\|78/xiaozhi\|oshwhub.com/tenclass" --include="*.md" --include="*.yml" --include="*.yaml" --include="*.py" --include="*.cc" --include="*.h" --include="*.c" .
+grep -r "tenclass\|api.tenclass\|xiaozhi.me\|ZDarow/xiaozhi\|oshwhub.com/tenclass" --include="*.md" --include="*.yml" --include="*.yaml" --include="*.py" --include="*.cc" --include="*.h" --include="*.c" .
 ```
 **Файлы к проверке:**
 - `README.md`, `README_zh.md`, `README_ja.md` — ссылки на github.com/78/*, oshwhub.com/tenclass*, xiaozhi.me
 - `main/Kconfig.projbuild` — `CONFIG_OTA_URL` default = `https://api.tenclass.net/xiaozhi/ota/`
 - `.github/ISSUE_TEMPLATE/*.yml` — email `xiaozhi.ai@tenclass.com`, ссылка на `xiaozhi.me`
 - `.github/SUPPORT.md` — email и сайт
-- `main/idf_component.yml` — зависимости `78/esp_lcd_nv3023`, `78/esp-wifi-connect`, `78/esp-ml307`, `78/uart-eth-modem`, `78/xiaozhi-fonts`
+- `main/idf_component.yml` — зависимости `78/esp_lcd_nv3023`, `78/esp-wifi-connect`, `78/esp-ml307`, `78/uart-eth-modem`, `ZDarow/xiaozhi-fonts`
 - `scripts/build.py` — логика сборки, релизы
 - Документация в `docs/*.md`
 
@@ -103,7 +103,7 @@ config ASSETS_GENERATOR_URL
     string "Custom Assets Generator URL"
     default "https://assets.xiaozhi.ru"
     help
-        Генератор кастомных ассетов (замена github.com/78/xiaozhi-assets-generator)
+        Генератор кастомных ассетов (замена github.com/ZDarow/xiaozhi-assets-generator)
 
 config SUPPORT_EMAIL
     string "Support Email"
@@ -133,10 +133,10 @@ ota_url = os.environ.get("OTA_URL", config_value)
 | `78/esp-wifi-connect` | Форкнуть или заменить на `espressif/esp-wifi-connect` |
 | `78/esp-ml307` | Форкнуть на `xiaozhi-ru/esp-ml307` |
 | `78/uart-eth-modem` | Форкнуть на `xiaozhi-ru/uart-eth-modem` |
-| `78/xiaozhi-fonts` | Форкнуть на `xiaozhi-ru/xiaozhi-fonts` |
+| `ZDarow/xiaozhi-fonts` | Форкнуть на `xiaozhi-ru/xiaozhi-fonts` |
 
 #### 3.4 Обновление ссылок в документации и board README
-- `github.com/78/xiaozhi-assets-generator` → `github.com/xiaozhi-ru/xiaozhi-assets-generator`
+- `github.com/ZDarow/xiaozhi-assets-generator` → `github.com/xiaozhi-ru/xiaozhi-assets-generator`
 - `oshwhub.com/tenclass01/*` → оставить (аппаратная документация) или зеркало
 - `xiaozhi.me` → `xiaozhi.ru` (или оставить как fallback)
 
@@ -388,7 +388,7 @@ git clean -fd
 git checkout -b feature/russia-adaptation
 
 # 2. Начать с Phase 1: аудит
-grep -r "tenclass\|api.tenclass\|xiaozhi.me\|78/xiaozhi" --include="*.md" --include="*.yml" --include="*.py" .
+grep -r "tenclass\|api.tenclass\|xiaozhi.me\|ZDarow/xiaozhi" --include="*.md" --include="*.yml" --include="*.py" .
 
 # 3. Создать чекпоинт
 git commit -am "WIP: checkpoint before Russia adaptation"

@@ -1,7 +1,7 @@
 blank_issues_enabled: false
 contact_links:
   - name: Отвязать ранее используемое устройство
-    url: https://github.com/78/xiaozhi-esp32/blob/main/.github/SUPPORT.md#отвязка-ранее-используемого-устройства
+    url: https://github.com/ZDarow/xiaozhi-esp32/blob/main/.github/SUPPORT.md#отвязка-ранее-используемого-устройства
     about: Если устройство привязано к другому аккаунту, отправьте его идентификатор и MAC-адрес по личной почте. Не публикуйте эти данные в публичном issue.
   - name: Прочие облачные сервисы и запросы аккаунта
     url: https://xiaozhi.me/
