@@ -28,9 +28,20 @@ std::string Settings::GetString(const std::string& key, const std::string& defau
         return default_value;
     }
 
+    if (length == 0 || length > 4096) {
+        ESP_LOGW(TAG, "Invalid NVS string length for %s: %zu", key.c_str(), length);
+        return default_value;
+    }
+
     std::string value;
     value.resize(length);
-    ESP_ERROR_CHECK(nvs_get_str(nvs_handle_, key.c_str(), value.data(), &length));
+    auto err = nvs_get_str(nvs_handle_, key.c_str(), value.data(), &length);
+    if (err != ESP_OK) {
+        return default_value;
+    }
+    if (length > 0 && value[length - 1] != '\0') {
+        ESP_LOGW(TAG, "NVS string %s is not NUL-terminated", key.c_str());
+    }
     while (!value.empty() && value.back() == '\0') {
         value.pop_back();
     }

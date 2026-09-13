@@ -53,6 +53,9 @@ Esp32Camera::Esp32Camera(const camera_config_t& config) {
 }
 
 Esp32Camera::~Esp32Camera() {
+    if (encoder_thread_.joinable()) {
+        encoder_thread_.join();
+    }
     if (streaming_on_) {
         if (current_fb_) {
             esp_camera_fb_return(current_fb_);

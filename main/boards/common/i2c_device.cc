@@ -7,7 +7,7 @@
 #define TAG "I2cDevice"
 
 I2cDevice::I2cDevice(i2c_master_bus_handle_t i2c_bus, uint8_t addr)
-    : i2c_bus_(i2c_bus), device_address_(addr) {
+    : i2c_bus_(i2c_bus), device_address_(addr), i2c_device_(nullptr) {
     i2c_device_config_t i2c_device_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = addr,
@@ -18,34 +18,66 @@ I2cDevice::I2cDevice(i2c_master_bus_handle_t i2c_bus, uint8_t addr)
                 .disable_ack_check = 0,
             },
     };
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_bus, &i2c_device_cfg, &i2c_device_));
-    assert(i2c_device_ != NULL);
+    esp_err_t err = i2c_master_bus_add_device(i2c_bus, &i2c_device_cfg, &i2c_device_);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "i2c_master_bus_add_device failed: 0x%x", err);
+        i2c_device_ = nullptr;
+    }
 }
 
 void I2cDevice::WriteReg(uint8_t reg, uint8_t value) {
+    if (i2c_device_ == nullptr) {
+        ESP_LOGE(TAG, "I2C device not initialized");
+        return;
+    }
     uint8_t buffer[2] = {reg, value};
-    ESP_ERROR_CHECK(i2c_master_transmit(i2c_device_, buffer, 2, 100));
+    esp_err_t err = i2c_master_transmit(i2c_device_, buffer, 2, 100);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "I2C write reg failed: 0x%x", err);
+    }
 }
 
 void I2cDevice::WriteRegs(uint8_t reg, const uint8_t* buffer, size_t length) {
+    if (i2c_device_ == nullptr) {
+        ESP_LOGE(TAG, "I2C device not initialized");
+        return;
+    }
     uint8_t* tx = (uint8_t*)malloc(length + 1);
     if (tx == nullptr) {
         return;
     }
     tx[0] = reg;
     memcpy(tx + 1, buffer, length);
-    ESP_ERROR_CHECK(i2c_master_transmit(i2c_device_, tx, length + 1, 100));
+    esp_err_t err = i2c_master_transmit(i2c_device_, tx, length + 1, 100);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "I2C write regs failed: 0x%x", err);
+    }
     free(tx);
 }
 
 uint8_t I2cDevice::ReadReg(uint8_t reg) {
+    if (i2c_device_ == nullptr) {
+        ESP_LOGE(TAG, "I2C device not initialized");
+        return 0;
+    }
     uint8_t buffer[1];
-    ESP_ERROR_CHECK(i2c_master_transmit_receive(i2c_device_, &reg, 1, buffer, 1, 100));
+    esp_err_t err = i2c_master_transmit_receive(i2c_device_, &reg, 1, buffer, 1, 100);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "I2C read reg failed: 0x%x", err);
+        return 0;
+    }
     return buffer[0];
 }
 
 void I2cDevice::ReadRegs(uint8_t reg, uint8_t* buffer, size_t length) {
-    ESP_ERROR_CHECK(i2c_master_transmit_receive(i2c_device_, &reg, 1, buffer, length, 100));
+    if (i2c_device_ == nullptr) {
+        ESP_LOGE(TAG, "I2C device not initialized");
+        return;
+    }
+    esp_err_t err = i2c_master_transmit_receive(i2c_device_, &reg, 1, buffer, length, 100);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "I2C read regs failed: 0x%x", err);
+    }
 }
 
 esp_err_t I2cDevice::ResetBus(const char* reason) {

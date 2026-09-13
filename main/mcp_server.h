@@ -54,6 +54,8 @@ public:
 class PropertyList;
 
 // Pointer alternatives transfer ownership to McpTool::Call.
+// cJSON* must be allocated with cJSON_CreateObject/Array and will be deleted by the callee.
+// ImageContent* must be allocated with new and will be deleted by the callee.
 using ReturnValue = std::variant<bool, int, std::string, cJSON*, ImageContent*>;
 using ToolResult = std::expected<ReturnValue, std::string>;
 using ToolCallback = std::function<ToolResult(const PropertyList&)>;

@@ -393,6 +393,9 @@ EspVideo::~EspVideo() {
         int type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
         ioctl(video_fd_, VIDIOC_STREAMOFF, &type);
     }
+    if (encoder_thread_.joinable()) {
+        encoder_thread_.join();
+    }
     for (auto& b : mmap_buffers_) {
         if (b.start && b.length) {
             munmap(b.start, b.length);
@@ -417,8 +420,8 @@ bool EspVideo::Capture() {
     }
 
     if (!streaming_on_ || video_fd_ < 0) {
-        ESP_LOGE(TAG, "Capture failed: camera did not initialize (streaming_on_=%d, video_fd_=%d)", streaming_on_,
-                 video_fd_);
+        ESP_LOGE(TAG, "Capture failed: camera did not initialize (streaming_on_=%d, video_fd_=%d)",
+                 streaming_on_, video_fd_);
         return false;
     }
 
