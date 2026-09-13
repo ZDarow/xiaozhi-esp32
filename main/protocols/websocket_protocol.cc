@@ -1,6 +1,7 @@
 #include "websocket_protocol.h"
 #include "application.h"
 #include "board.h"
+#include "cjson_utils.h"
 #include "settings.h"
 #include "system_info.h"
 
@@ -140,20 +141,19 @@ bool WebsocketProtocol::OpenAudioChannel() {
             }
         } else {
             // Parse JSON data
-            auto root = cJSON_ParseWithLength(data, len);
-            auto type = cJSON_GetObjectItem(root, "type");
+            CJsonUniquePtr root(cJSON_ParseWithLength(data, len));
+            auto type = cJSON_GetObjectItem(root.get(), "type");
             if (cJSON_IsString(type)) {
                 if (strcmp(type->valuestring, "hello") == 0) {
-                    ParseServerHello(root);
+                    ParseServerHello(root.get());
                 } else {
                     if (on_incoming_json_ != nullptr) {
-                        on_incoming_json_(root);
+                        on_incoming_json_(root.get());
                     }
                 }
             } else {
                 ESP_LOGE(TAG, "Missing message type, data: %s", std::string(data, len).c_str());
             }
-            cJSON_Delete(root);
         }
         last_incoming_time_ = std::chrono::steady_clock::now();
     });
@@ -198,28 +198,34 @@ bool WebsocketProtocol::OpenAudioChannel() {
 
 std::string WebsocketProtocol::GetHelloMessage() {
     // keys: message type, version, audio_params (format, sample_rate, channels)
-    cJSON* root = cJSON_CreateObject();
-    cJSON_AddStringToObject(root, "type", "hello");
-    cJSON_AddNumberToObject(root, "version", version_);
-    cJSON* features = cJSON_CreateObject();
+    CJsonUniquePtr root(cJSON_CreateObject());
+    if (root == nullptr) {
+        return "{}";
+    }
+    cJSON_AddStringToObject(root.get(), "type", "hello");
+    cJSON_AddNumberToObject(root.get(), "version", version_);
+    CJsonUniquePtr features(cJSON_CreateObject());
+    if (features == nullptr) {
+        return "{}";
+    }
 #if CONFIG_USE_SERVER_AEC
-    cJSON_AddBoolToObject(features, "aec", true);
+    cJSON_AddBoolToObject(features.get(), "aec", true);
 #endif
-    cJSON_AddBoolToObject(features, "mcp", true);
-    cJSON_AddItemToObject(root, "features", features);
-    AddTextFontCapabilities(root);
-    cJSON_AddStringToObject(root, "transport", "websocket");
-    cJSON* audio_params = cJSON_CreateObject();
-    cJSON_AddStringToObject(audio_params, "format", "opus");
-    cJSON_AddNumberToObject(audio_params, "sample_rate", 16000);
-    cJSON_AddNumberToObject(audio_params, "channels", 1);
-    cJSON_AddNumberToObject(audio_params, "frame_duration", OPUS_FRAME_DURATION_MS);
-    cJSON_AddItemToObject(root, "audio_params", audio_params);
-    auto json_str = cJSON_PrintUnformatted(root);
-    std::string message(json_str);
-    cJSON_free(json_str);
-    cJSON_Delete(root);
-    return message;
+    cJSON_AddBoolToObject(features.get(), "mcp", true);
+    cJSON_AddItemToObject(root.get(), "features", features.get());
+    AddTextFontCapabilities(root.get());
+    cJSON_AddStringToObject(root.get(), "transport", "websocket");
+    CJsonUniquePtr audio_params(cJSON_CreateObject());
+    if (audio_params == nullptr) {
+        return "{}";
+    }
+    cJSON_AddStringToObject(audio_params.get(), "format", "opus");
+    cJSON_AddNumberToObject(audio_params.get(), "sample_rate", 16000);
+    cJSON_AddNumberToObject(audio_params.get(), "channels", 1);
+    cJSON_AddNumberToObject(audio_params.get(), "frame_duration", OPUS_FRAME_DURATION_MS);
+    cJSON_AddItemToObject(root.get(), "audio_params", audio_params.get());
+    CJsonStringUniquePtr json_str(cJSON_PrintUnformatted(root.get()));
+    return json_str != nullptr ? std::string(json_str.get()) : std::string();
 }
 
 void WebsocketProtocol::ParseServerHello(const cJSON* root) {

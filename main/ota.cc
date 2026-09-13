@@ -2,6 +2,7 @@
 #include "system_info.h"
 #include "settings.h"
 #include "assets/lang_config.h"
+#include "cjson_utils.h"
 
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -124,22 +125,33 @@ NetworkResult<> Ota::CheckVersion() {
         return std::unexpected(NetworkError::HttpFailed(*status_code));
     }
 
+    size_t content_length = http->GetBodyLength();
+    if (content_length == 0) {
+        ESP_LOGE(TAG, "Failed to get content length");
+        http->Close();
+        return std::unexpected(NetworkError::ProtocolError());
+    }
+
     data = http->ReadAll();
     http->Close();
+    if (data.size() > content_length * 2) {
+        ESP_LOGE(TAG, "Response body exceeds expected length");
+        return std::unexpected(NetworkError::ProtocolError());
+    }
 
     // Response: { "firmware": { "version": "1.0.0", "url": "http://" } }
     // Parse the JSON response and check if the version is newer
     // If it is, set has_new_version_ to true and store the new version and URL
-    
-    cJSON *root = cJSON_Parse(data.c_str());
-    if (root == NULL) {
+
+    CJsonUniquePtr root(cJSON_Parse(data.c_str()));
+    if (root == nullptr) {
         ESP_LOGE(TAG, "Failed to parse JSON response");
         return std::unexpected(NetworkError::ProtocolError());
     }
 
     has_activation_code_ = false;
     has_activation_challenge_ = false;
-    cJSON *activation = cJSON_GetObjectItem(root, "activation");
+    cJSON *activation = cJSON_GetObjectItem(root.get(), "activation");
     if (cJSON_IsObject(activation)) {
         cJSON* message = cJSON_GetObjectItem(activation, "message");
         if (cJSON_IsString(message)) {
@@ -162,7 +174,7 @@ NetworkResult<> Ota::CheckVersion() {
     }
 
     has_mqtt_config_ = false;
-    cJSON *mqtt = cJSON_GetObjectItem(root, "mqtt");
+    cJSON *mqtt = cJSON_GetObjectItem(root.get(), "mqtt");
     if (cJSON_IsObject(mqtt)) {
         Settings settings("mqtt", true);
         cJSON *item = NULL;
@@ -183,7 +195,7 @@ NetworkResult<> Ota::CheckVersion() {
     }
 
     has_websocket_config_ = false;
-    cJSON *websocket = cJSON_GetObjectItem(root, "websocket");
+    cJSON *websocket = cJSON_GetObjectItem(root.get(), "websocket");
     if (cJSON_IsObject(websocket)) {
         Settings settings("websocket", true);
         cJSON *item = NULL;
@@ -465,15 +477,19 @@ std::string Ota::GetActivationPayload() {
     }
 #endif
 
-    cJSON *payload = cJSON_CreateObject();
-    cJSON_AddStringToObject(payload, "algorithm", "hmac-sha256");
-    cJSON_AddStringToObject(payload, "serial_number", serial_number_.c_str());
-    cJSON_AddStringToObject(payload, "challenge", activation_challenge_.c_str());
-    cJSON_AddStringToObject(payload, "hmac", hmac_hex.c_str());
-    auto json_str = cJSON_PrintUnformatted(payload);
-    std::string json(json_str);
-    cJSON_free(json_str);
-    cJSON_Delete(payload);
+    CJsonUniquePtr payload(cJSON_CreateObject());
+    if (payload == nullptr) {
+        return "{}";
+    }
+    cJSON_AddStringToObject(payload.get(), "algorithm", "hmac-sha256");
+    cJSON_AddStringToObject(payload.get(), "serial_number", serial_number_.c_str());
+    cJSON_AddStringToObject(payload.get(), "challenge", activation_challenge_.c_str());
+    cJSON_AddStringToObject(payload.get(), "hmac", hmac_hex.c_str());
+    auto json_str = cJSON_PrintUnformatted(payload.get());
+    std::string json(json_str != nullptr ? json_str : "");
+    if (json_str != nullptr) {
+        cJSON_free(json_str);
+    }
 
     ESP_LOGI(TAG, "Activation payload: %s", json.c_str());
     return json;

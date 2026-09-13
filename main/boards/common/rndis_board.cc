@@ -195,10 +195,16 @@ void RndisBoard::SetPowerSaveLevel(PowerSaveLevel level) {
 
 std::string RndisBoard::GetDeviceStatusJson() {
     auto& board = Board::GetInstance();
-    auto root = cJSON_CreateObject();
+    CJsonUniquePtr root(cJSON_CreateObject());
+    if (root == nullptr) {
+        return "{}";
+    }
 
     // Audio speaker
     auto audio_speaker = cJSON_CreateObject();
+    if (audio_speaker == nullptr) {
+        return "{}";
+    }
     if (auto codec = board.GetAudioCodec()) {
         cJSON_AddNumberToObject(audio_speaker, "volume", codec->output_volume());
     }
@@ -206,6 +212,9 @@ std::string RndisBoard::GetDeviceStatusJson() {
 
     // Screen
     auto screen = cJSON_CreateObject();
+    if (screen == nullptr) {
+        return "{}";
+    }
     if (auto backlight = board.GetBacklight()) {
         cJSON_AddNumberToObject(screen, "brightness", backlight->brightness());
     }
@@ -221,6 +230,9 @@ std::string RndisBoard::GetDeviceStatusJson() {
     bool charging = false, discharging = false;
     if (board.GetBatteryLevel(level, charging, discharging)) {
         auto battery = cJSON_CreateObject();
+        if (battery == nullptr) {
+            return "{}";
+        }
         cJSON_AddNumberToObject(battery, "level", level);
         cJSON_AddBoolToObject(battery, "charging", charging);
         cJSON_AddItemToObject(root, "battery", battery);
@@ -228,6 +240,9 @@ std::string RndisBoard::GetDeviceStatusJson() {
 
     // Network
     auto network = cJSON_CreateObject();
+    if (network == nullptr) {
+        return "{}";
+    }
     cJSON_AddStringToObject(network, "type", "rndis");
     cJSON_AddItemToObject(root, "network", network);
 
@@ -235,14 +250,17 @@ std::string RndisBoard::GetDeviceStatusJson() {
     float temp = 0.0f;
     if (board.GetTemperature(temp)) {
         auto chip = cJSON_CreateObject();
+        if (chip == nullptr) {
+            return "{}";
+        }
         cJSON_AddNumberToObject(chip, "temperature", temp);
         cJSON_AddItemToObject(root, "chip", chip);
     }
 
-    auto str = cJSON_PrintUnformatted(root);
-    std::string result(str);
-    cJSON_free(str);
-    cJSON_Delete(root);
-    return result;
+    CJsonStringUniquePtr json_str(cJSON_PrintUnformatted(root.get()));
+    if (json_str == nullptr) {
+        return "{}";
+    }
+    return std::string(json_str.get());
 }
 #endif // CONFIG_IDF_TARGET_ESP32P4 || CONFIG_IDF_TARGET_ESP32S3
