@@ -411,14 +411,14 @@ void Application::CheckAssetsVersion() {
         board.SetPowerSaveLevel(PowerSaveLevel::PERFORMANCE);
         display->SetChatMessage("system", Lang::Strings::PLEASE_WAIT);
 
-        bool success =
-            assets.Download(download_url, [this, display](int progress, size_t speed) -> void {
-                char buffer[32];
-                snprintf(buffer, sizeof(buffer), "%d%% %uKB/s", progress, speed / 1024);
-                Schedule([display, message = std::string(buffer)]() {
-                    display->SetChatMessage("system", message.c_str());
-                });
+        bool success = assets.Download(download_url, [this](int progress, size_t speed) -> void {
+            char buffer[32];
+            snprintf(buffer, sizeof(buffer), "%d%% %uKB/s", progress, speed / 1024);
+            Schedule([this, message = std::string(buffer)]() {
+                auto display = Board::GetInstance().GetDisplay();
+                display->SetChatMessage("system", message.c_str());
             });
+        });
 
         board.SetPowerSaveLevel(PowerSaveLevel::LOW_POWER);
         vTaskDelay(pdMS_TO_TICKS(1000));
@@ -575,7 +575,7 @@ void Application::InitializeProtocol() {
         });
     });
 
-    protocol_->OnIncomingJson([this, display](const cJSON* root) {
+    protocol_->OnIncomingJson([this](const cJSON* root) {
         // Parse JSON data
         auto type = cJSON_GetObjectItem(root, "type");
         if (!cJSON_IsString(type)) {
@@ -644,8 +644,9 @@ void Application::InitializeProtocol() {
                         glyphs.clear();
                     }
                     ESP_LOGI(TAG, "<< %s", text->valuestring);
-                    Schedule([display, message = std::string(text->valuestring),
+                    Schedule([this, message = std::string(text->valuestring),
                               glyphs = std::move(glyphs), bpp]() {
+                        auto display = Board::GetInstance().GetDisplay();
                         display->AddTextGlyphs(glyphs, bpp);
                         display->SetChatMessage("assistant", message.c_str());
                     });
@@ -660,8 +661,9 @@ void Application::InitializeProtocol() {
                     glyphs.clear();
                 }
                 ESP_LOGI(TAG, ">> %s", text->valuestring);
-                Schedule([display, message = std::string(text->valuestring),
+                Schedule([this, message = std::string(text->valuestring),
                           glyphs = std::move(glyphs), bpp]() {
+                    auto display = Board::GetInstance().GetDisplay();
                     display->AddTextGlyphs(glyphs, bpp);
                     display->SetChatMessage("user", message.c_str());
                 });
@@ -669,7 +671,8 @@ void Application::InitializeProtocol() {
         } else if (strcmp(type->valuestring, "llm") == 0) {
             auto emotion = cJSON_GetObjectItem(root, "emotion");
             if (cJSON_IsString(emotion)) {
-                Schedule([display, emotion_str = std::string(emotion->valuestring)]() {
+                Schedule([this, emotion_str = std::string(emotion->valuestring)]() {
+                    auto display = Board::GetInstance().GetDisplay();
                     display->SetEmotion(emotion_str.c_str());
                 });
             }
@@ -1162,6 +1165,9 @@ void Application::HandleNotificationFinished(uint32_t playback_id, bool success)
 void Application::Schedule(std::function<void()>&& callback) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        if (main_tasks_.size() >= 16) {
+            main_tasks_.pop_front();
+        }
         main_tasks_.push_back(std::move(callback));
     }
     xEventGroupSetBits(event_group_, MAIN_EVENT_SCHEDULE);
@@ -1231,10 +1237,11 @@ bool Application::UpgradeFirmware(const std::string& url, const std::string& ver
     audio_service_.Stop();
     vTaskDelay(pdMS_TO_TICKS(1000));
 
-    bool upgrade_success = Ota::Upgrade(upgrade_url, [this, display](int progress, size_t speed) {
+    bool upgrade_success = Ota::Upgrade(upgrade_url, [this](int progress, size_t speed) {
         char buffer[32];
         snprintf(buffer, sizeof(buffer), "%d%% %uKB/s", progress, speed / 1024);
-        Schedule([display, message = std::string(buffer)]() {
+        Schedule([this, message = std::string(buffer)]() {
+            auto display = Board::GetInstance().GetDisplay();
             display->SetChatMessage("system", message.c_str());
         });
     });
