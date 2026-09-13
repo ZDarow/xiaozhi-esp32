@@ -1,10 +1,11 @@
+---
 name: Build Boards
 
-on:
+"on":
   push:
     branches:
       - main
-      - ci/* # for ci test
+      - ci/*  # для CI-тестов
   pull_request:
     branches:
       - main
@@ -28,6 +29,51 @@ jobs:
 
       - name: Test build tooling
         run: python -m unittest discover -s scripts/tests -v
+
+      - name: Check code formatting
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_REF="HEAD^1"
+            HEAD_REF="HEAD^2"
+          else
+            BEFORE="${{ github.event.before }}"
+            if [[ "$BEFORE" =~ ^0+$ ]]; then
+              echo "No previous revision for the first push; " \
+                   "skipping formatting diff."
+              exit 0
+            fi
+            BASE_REF="$BEFORE"
+            HEAD_REF="${{ github.sha }}"
+          fi
+
+          git diff --unified=0 "$BASE_REF" "$HEAD_REF" \
+            -- '*.c' '*.cc' '*.cpp' '*.h' '*.hpp' > /tmp/code-format.diff
+
+          if [[ ! -s /tmp/code-format.diff ]]; then
+            exit 0
+          fi
+
+          if command -v clang-format-diff-18 >/dev/null 2>&1; then
+            FORMAT_DIFF_BIN="clang-format-diff-18"
+          elif command -v clang-format-diff >/dev/null 2>&1; then
+            FORMAT_DIFF_BIN="clang-format-diff"
+          else
+            echo "clang-format-diff is required for formatting checks."
+            exit 1
+          fi
+
+          "$FORMAT_DIFF_BIN" -p1 -style=file < /tmp/code-format.diff \
+            > /tmp/code-format.patch
+          if [[ -s /tmp/code-format.patch ]]; then
+            cat /tmp/code-format.patch
+            exit 1
+          fi
+
+      - name: Lint YAML files
+        run: |
+          pip install yamllint
+          yamllint .github/workflows/*.yml
 
       - id: select
         name: Select variants based on changes
@@ -55,12 +101,16 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           BASE_SHA="HEAD^1"
           HEAD_SHA="HEAD^2"
-          echo "Base: $(git rev-parse "$BASE_SHA"), Head: $(git rev-parse "$HEAD_SHA")"
+          echo "Base: $(git rev-parse "$BASE_SHA"), " \
+               "Head: $(git rev-parse "$HEAD_SHA")"
 
           CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
           echo -e "Changed files:\n$CHANGED"
 
-          SELECTED=$(printf '%s\n' "$CHANGED" | python scripts/build.py --select-changed)
+          SELECTED=$(
+            printf '%s\n' "$CHANGED" |
+              python scripts/build.py --select-changed
+          )
           echo "variants=$SELECTED" >> $GITHUB_OUTPUT
 
   build:
