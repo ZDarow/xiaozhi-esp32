@@ -1,13 +1,13 @@
 # 产品链接
 
-[微雪电子 ESP32-S3-Touch-AMOLED-1.32](https://www.waveshare.net/shop/ESP32-S3-Touch-AMOLED-1.43C.htm)
+[微雪电子 ESP32-S3-Touch-AMOLED-1.43C](https://www.waveshare.net/shop/ESP32-S3-Touch-AMOLED-1.43C.htm)
 
 # 编译配置命令
 
 **克隆工程**
 
 ```bash
-git clone https://github.com/78/xiaozhi-esp32.git
+git clone https://github.com/ZDarow/xiaozhi-esp32.git
 ```
 
 **进入工程**
@@ -36,7 +36,7 @@ Xiaozhi Assistant -> Board Type -> Waveshare ESP32-S3-Touch-AMOLED-1.43C
 
 **编译**
 
-```ba
+```bash
 idf.py build
 ```
 

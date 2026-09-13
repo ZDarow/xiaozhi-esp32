@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="80%" align="center" src="../../../docs/V1/electron-bot.png" alt="electronBot">
+  <img width="80%" align="center" src="../../../docs/v1/electron-bot.png" alt="electronBot">
 </p>
 
 <h1 align="center">electronBot</h1>
@@ -8,7 +8,7 @@
 
 electronBot 是稚晖君开源的桌面级机器人，外观灵感来自 WALL-E 中的 EVE。该版本接入小智 AI，支持语音交互、表情显示、动作控制、WebSocket 局域网调试，以及 AI 自编程舵机动作。
 
-- 官网：<a href="www.electronBot.tech" target="_blank" title="electronBot 官网">electronBot 官网</a>
+- 官网：<a href="https://www.electronBot.tech" target="_blank" title="electronBot 官网">electronBot 官网</a>
 - 硬件：<a href="https://oshwhub.com/txp666/electronbot-ai" target="_blank" title="立创开源">立创开源</a>
 
 ## 能力概览

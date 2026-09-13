@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="80%" align="center" src="../../../docs/V1/otto-robot.png"alt="logo">
+  <img width="80%" align="center" src="../../../docs/v1/otto-robot.png" alt="logo">
 </p>
   <h1 align="center">
   ottoRobot
@@ -9,15 +9,10 @@
 
 otto 机器人是一个开源的人形机器人平台，具有多种动作能力和互动功能。本项目基于 ESP32 实现了 otto 机器人的控制系统，并加入小智ai。
 
-- <a href="www.ottodiy.tech" target="_blank" title="otto官网">复刻教程</a>
+- <a href="https://www.ottodiy.tech" target="_blank" title="otto官网">复刻教程</a>
 
 ### 微信小程序控制
 
-<p align="center">
-  <img width="300" src="https://youke1.picui.cn/s1/2025/11/17/691abaa8278eb.jpg" alt="微信小程序二维码">
-</p>
-
-扫描上方二维码，使用微信小程序控制 Otto 机器人。
 
 ## 硬件
 - <a href="https://oshwhub.com/txp666/ottorobot" target="_blank" title="立创开源">立创开源</a>

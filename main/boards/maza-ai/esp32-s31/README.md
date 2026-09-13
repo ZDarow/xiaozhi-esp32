@@ -33,7 +33,7 @@
 请先安装并激活 ESP-IDF v6.1 环境，然后克隆本项目：
 
 ```bash
-git clone https://github.com/78/xiaozhi-esp32.git
+git clone https://github.com/ZDarow/xiaozhi-esp32.git
 cd xiaozhi-esp32
 ```
 

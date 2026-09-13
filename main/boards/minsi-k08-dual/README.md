@@ -3,10 +3,6 @@ minsi-k08-wifi和minsi-k08-ml307是敏思科技推出的基于ESP32S3N16R8，搭
 
 <a href="https://item.taobao.com/item.htm?id=889892765588" target="_blank" title="SenseCAP Watcher">Minsi-k08</a>
 
-  <a href="minsi-k08.jpg" target="_blank" title="Minsi-k08">
-    <img src="minsi-k08.jpg" width="240" />
-  </a>
-
 
 
 # 编译配置命令

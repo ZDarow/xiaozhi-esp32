@@ -21,7 +21,7 @@
 **克隆工程**
 
 ```bash
-git clone https://github.com/78/xiaozhi-esp32.git
+git clone https://github.com/ZDarow/xiaozhi-esp32.git
 ```
 
 **进入工程**
