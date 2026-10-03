@@ -5,25 +5,37 @@ config OTA_URL
     default "https://ota.xiaozhi.ru/xiaozhi/ota/"
     help
         The application will access this URL to check for new firmwares and server address.
-        Override at runtime via the NVS key "ota_url" or the OTA_URL env variable.
+        Override at runtime via the NVS key "ota_url". Overrides with non-HTTPS
+        schemes are rejected unless it is a debug build.
+
+config ALLOW_OTA_ENV_OVERRIDE
+    bool "Allow OTA_URL environment variable override (development only)"
+    default n
+    help
+        When enabled, the OTA_URL environment variable can override the OTA
+        endpoint at runtime. Intended ONLY for local development/provisioning
+        builds; never enable in release firmware. Even then, only https/wss
+        URLs are accepted.
 
 config MQTT_DEFAULT_ENDPOINT
     string "Default MQTT Endpoint"
     default "mqtt.xiaozhi.ru"
     help
-        Default MQTT broker host. Override via NVS key "mqtt_endpoint" or MQTT_ENDPOINT env.
+        Default MQTT broker host used as fallback when no endpoint was
+        provisioned to NVS by the OTA/server handshake.
 
 config MQTT_DEFAULT_PORT
     int "Default MQTT Port"
     default 8883
     help
-        Default MQTT broker port.
+        Default MQTT broker port used together with MQTT_DEFAULT_ENDPOINT.
 
 config WEBSOCKET_DEFAULT_ENDPOINT
     string "Default WebSocket Endpoint"
     default "wss://ws.xiaozhi.ru"
     help
-        Default WebSocket server URL. Override via NVS key "websocket_url" or WEBSOCKET_URL env.
+        Default WebSocket server URL used as fallback when no url was
+        provisioned to NVS by the OTA/server handshake.
 
 config SUPPORT_EMAIL
     string "Support Email"

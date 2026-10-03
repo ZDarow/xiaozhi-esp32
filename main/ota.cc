@@ -13,17 +13,16 @@
 #include <esp_efuse.h>
 #include <esp_efuse_table.h>
 #include <esp_heap_caps.h>
-#include <esp_app_format.h>
 #include <esp_system.h>
 #include <esp_err.h>
 #ifdef SOC_HMAC_SUPPORTED
 #include <esp_hmac.h>
 #endif
 
-// Поддержка ГОСТ 2012 (опционально, включается через CONFIG_USE_GOST_CRYPTO)
-#ifdef CONFIG_USE_GOST_CRYPTO
-#include <esp_gost.h>
-#endif
+// Поддержка ГОСТ 2012 (опционально, включается через CONFIG_USE_GOST_CRYPTO).
+// NOTE: компонент esp-gost ещё не добавлен в idf_component.yml; пока включён
+// только CONFIG_USE_GOST_CRYPTO без библиотеки, проверка подписи работает в
+// fail-closed режиме (см. VerifyGostSignature).
 
 #include <cstring>
 #include <vector>
@@ -51,17 +50,45 @@ Ota::Ota() {
 Ota::~Ota() {
 }
 
+// Валидация URL: разрешены только https:// и wss:// (и ws:// для dev-сборок).
+// Защита от подмены endpoint через NVS/env (например, file:// или http:// MITM).
+static bool IsSafeOtaUrl(const std::string& url) {
+    auto starts = [&url](const char* prefix) {
+        return url.rfind(prefix, 0) == 0;
+    };
+    if (starts("https://")) {
+        return true;
+    }
+#ifdef CONFIG_COMPILER_OPTIMIZATION_DEBUG
+    // Разрешить http/ws только в отладочных сборках (локальная разработка).
+    if (starts("http://") || starts("ws://")) {
+        return true;
+    }
+#endif
+    return false;
+}
+
 std::string Ota::GetCheckVersionUrl() {
-    // 1. Проверка env-переменной OTA_URL (для локальной сборки и Центральной России)
+    // 1. Env-переменная OTA_URL — только для отладочных сборок (CONFIG_ALLOW_OTA_ENV_OVERRIDE).
+    //    В release-прошивках getenv на ESP32 не имеет смысла (нет shell), но явный
+    //    guard защищает от случайной компиляции dev-хука в релиз.
+#ifdef CONFIG_ALLOW_OTA_ENV_OVERRIDE
     const char* env_url = getenv("OTA_URL");
     if (env_url != nullptr && strlen(env_url) > 10) {
-        return std::string(env_url);
+        if (IsSafeOtaUrl(env_url)) {
+            return std::string(env_url);
+        }
+        ESP_LOGE(TAG, "OTA_URL env rejected: only https/wss allowed: %s", env_url);
     }
-    // 2. Проверка NVS-ключа ota_url (runtime override)
+#endif
+    // 2. NVS-ключ ota_url (runtime override, например из provisioning-скрипта)
     Settings settings("wifi", false);
     std::string url = settings.GetString("ota_url");
     if (!url.empty()) {
-        return url;
+        if (IsSafeOtaUrl(url)) {
+            return url;
+        }
+        ESP_LOGE(TAG, "NVS ota_url rejected: unsafe scheme, falling back to Kconfig default");
     }
     // 3. Fallback на Kconfig
     return CONFIG_OTA_URL;
@@ -282,7 +309,24 @@ void Ota::MarkCurrentVersionValid() {
     }
 }
 
+bool Ota::VerifyGostSignature(const uint8_t* image, size_t len) {
+    // Fail-closed: без реальной реализации ГОСТ Р 34.10-2012 подпись НЕ считается
+    // валидной. Возврат true здесь означал бы обход проверки безопасности OTA.
+    // TODO: интегрировать mbedTLS/PSA с ГОСТ Р 34.11-2012 (хэш) и Р 34.10-2012
+    // (подпись) либо внешнюю библиотеку esp-gost; ключ — CONFIG_OTA_SIGNATURE_PUBKEY.
+    (void)image;
+    (void)len;
+    ESP_LOGE(TAG, "GOST signature verification is not implemented; refusing upgrade (fail-closed)");
+    return false;
+}
+
 bool Ota::Upgrade(const std::string& firmware_url, std::function<void(int progress, size_t speed)> callback) {
+#ifdef CONFIG_USE_GOST_CRYPTO
+    if (CONFIG_OTA_SIGNATURE_PUBKEY[0] == '\0') {
+        ESP_LOGE(TAG, "CONFIG_USE_GOST_CRYPTO включён, но OTA_SIGNATURE_PUBKEY пуст — обновление запрещено");
+        return false;
+    }
+#endif
     ESP_LOGI(TAG, "Upgrading firmware from %s", firmware_url.c_str());
     esp_ota_handle_t update_handle = 0;
     auto update_partition = esp_ota_get_next_update_partition(NULL);
@@ -327,6 +371,13 @@ bool Ota::Upgrade(const std::string& firmware_url, std::function<void(int progre
 
     size_t buffer_offset = 0;  // Current data size in buffer
     size_t total_read = 0, recent_read = 0;
+#ifdef CONFIG_USE_GOST_CRYPTO
+    // Накопление полного образа для проверки подписи ГОСТ перед активацией.
+    // NOTE: требует ~content_length байт PSRAM; при нехватке памяти апгрейд
+    // отклоняется (fail-closed).
+    std::vector<uint8_t> gost_image;
+    gost_image.reserve(content_length);
+#endif
     auto last_calc_time = esp_timer_get_time();
     while (true) {
         auto ret = http->Read(buffer + buffer_offset, PAGE_SIZE - buffer_offset);
@@ -371,6 +422,9 @@ bool Ota::Upgrade(const std::string& firmware_url, std::function<void(int progre
 
         // Write to flash when buffer is full (4KB) or it's the last chunk
         bool is_last_chunk = (n == 0);
+#ifdef CONFIG_USE_GOST_CRYPTO
+        gost_image.insert(gost_image.end(), buffer, buffer + buffer_offset);
+#endif
         if (buffer_offset == PAGE_SIZE || (is_last_chunk && buffer_offset > 0)) {
             auto err = esp_ota_write(update_handle, buffer, buffer_offset);
             if (err != ESP_OK) {
@@ -399,6 +453,15 @@ bool Ota::Upgrade(const std::string& firmware_url, std::function<void(int progre
         }
         return false;
     }
+
+#ifdef CONFIG_USE_GOST_CRYPTO
+    // Проверка подписи ГОСТ Р 34.10-2012 до переключения загрузочной партиции.
+    // Fail-closed: любая ошибка (в т.ч. отсутствие реализации) отменяет апгрейд.
+    if (!VerifyGostSignature(gost_image.data(), gost_image.size())) {
+        ESP_LOGE(TAG, "GOST signature check failed; aborting upgrade");
+        return false;
+    }
+#endif
 
     err = esp_ota_set_boot_partition(update_partition);
     if (err != ESP_OK) {
@@ -518,18 +581,3 @@ esp_err_t Ota::Activate() {
     ESP_LOGI(TAG, "Activation successful");
     return ESP_OK;
 }
-
-#ifdef CONFIG_USE_GOST_CRYPTO
-bool Ota::VerifyGostSignature(const std::string& firmware_path) {
-    // TODO: Интеграция с ГОСТ 2012 (Р 34.10-2012) через mbedTLS/PSA.
-    // Требует:
-    // 1. Публичный ключ из CONFIG_OTA_SIGNATURE_PUBKEY (PEM/DER)
-    // 2. Подпись в конце файла прошивки (отдельный сегмент или .sig)
-    // 3. Хэш ГОСТ Р 34.11-2012 (256/512 бит) от образа
-    // 4. Проверка подписи через ГОСТ Р 34.10-2012
-    //
-    // Это заглушка — реализация требует внешней ГОСТ-библиотеки для ESP-IDF.
-    ESP_LOGW(TAG, "GOST signature verification not yet implemented");
-    return true;  // Пассивный fallback: пропуск проверки
-}
-#endif

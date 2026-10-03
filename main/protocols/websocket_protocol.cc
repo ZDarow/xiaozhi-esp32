@@ -79,6 +79,11 @@ void WebsocketProtocol::CloseAudioChannel(bool send_goodbye) {
 bool WebsocketProtocol::OpenAudioChannel() {
     Settings settings("websocket", false);
     std::string url = settings.GetString("url");
+    if (url.empty()) {
+        // Fallback на российский WS-сервер из Kconfig (адаптация под Центральную Россию)
+        url = CONFIG_WEBSOCKET_DEFAULT_ENDPOINT;
+        ESP_LOGW(TAG, "Websocket URL not provisioned, using Kconfig default: %s", url.c_str());
+    }
     std::string token = settings.GetString("token");
     int version = settings.GetInt("version");
     if (version != 0) {

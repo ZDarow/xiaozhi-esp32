@@ -58,8 +58,9 @@ private:
 
 #ifdef CONFIG_USE_GOST_CRYPTO
     // Проверка подписи ГОСТ 2012 (Р 34.10-2012) для OTA-образа.
-    // Возвращает true, если подпись действительна или проверка отключена.
-    bool VerifyGostSignature(const std::string& firmware_path);
+    // Fail-closed: возвращает false, пока реальная реализация не интегрирована,
+    // поэтому апгрейд отклоняется вместо пропуска небезопасной заглушки.
+    static bool VerifyGostSignature(const uint8_t* image, size_t len);
 #endif
 };
 
