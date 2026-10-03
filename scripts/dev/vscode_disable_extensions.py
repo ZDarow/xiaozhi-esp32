@@ -20,6 +20,11 @@ VS Code (в этом случае состояние из памяти реда�
     python3 scripts/dev/vscode_disable_extensions.py --status   # текущее состояние
     python3 scripts/dev/vscode_disable_extensions.py --apply    # применить
     python3 scripts/dev/vscode_disable_extensions.py --undo     # откат
+
+Если редактор запущен и закрыть его нельзя, добавь `--force`: SQLite обновляет
+ключи по отдельности, поэтому запись переживает работу редактора, пока тот
+не перезапишет этот же ключ. После `--force` обязательно перезагрузи окно
+(Developer: Reload Window) и проверь `--status`.
 """
 
 import argparse
@@ -159,6 +164,11 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true", help="записать изменения (по умолчанию сухая проверка)")
     parser.add_argument("--undo", action="store_true", help="восстановить состояние из последней резервной копии")
     parser.add_argument("--status", action="store_true", help="показать текущее состояние и ничего не менять")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="записать, даже если базу держит запущенный VS Code (риск перезаписи из памяти редактора)",
+    )
     parser.add_argument("--workspace", default=Path.cwd(), type=Path, help="папка рабочей области (по умолчанию текущая)")
     parser.add_argument("--user-data", default=DEFAULT_USER_DATA, type=Path, help="каталог User данных VS Code")
     parser.add_argument("--manifest", default=DEFAULT_MANIFEST, type=Path, help="манифест установленных расширений")
@@ -178,10 +188,11 @@ def main() -> int:
         backup = latest_backup(db_path)
         if backup is None:
             die("резервных копий нет — откатывать нечего")
-        if holders(db_path):
-            die("базу держит запущенный VS Code — закрой редактор и повтори", code=2)
+        if holders(db_path) and not args.force:
+            die("базу держит запущенный VS Code — закрой редактор и повтори (или добавь --force)", code=2)
         shutil.copy2(backup, db_path)
         print(f"состояние восстановлено из {backup}")
+        print("перезагрузи окно VS Code для этой папки: Developer: Reload Window")
         return 0
 
     unwanted = load_unwanted(args.extensions_json)
@@ -201,18 +212,26 @@ def main() -> int:
         return 0
 
     busy = holders(db_path)
-    if busy:
+    if busy and not args.force:
         print(
             f"\nбазу держит запущенный VS Code (pid {', '.join(map(str, busy))}). "
-            "Он перезапишет файл из памяти — закрой редактор и повтори команду.",
+            "Он перезапишет файл из памяти — закрой редактор и повтори команду "
+            "(либо добавь --force и перезагрузи окно после записи).",
             file=sys.stderr,
         )
         return 2
+    if busy:
+        print(
+            f"\nвнимание: запись идёт при открытом VS Code (pid {', '.join(map(str, busy))}). "
+            "SQLite обновляет ключи по отдельности, поэтому правка сохранится, если "
+            "редактор не перезапишет этот ключ сам. После проверки перезагрузи окно: "
+            "Developer: Reload Window."
+        )
 
     merged = current + [{"id": item, "uuid": uuids.get(item, "")} for item in todo]
     write_disabled(db_path, merged)
     print(f"готово: отключено {len(merged)} расширений в области {folder_uri(workspace)}")
-    print("перезапусти окно VS Code для этой папки, чтобы изменения вступили в силу")
+    print("перезагрузи окно VS Code для этой папки, чтобы изменения вступили в силу")
     return 0
 
 

@@ -113,6 +113,9 @@ python3 scripts/dev/vscode_disable_extensions.py
 # Применение: закрой VS Code, затем выполни
 python3 scripts/dev/vscode_disable_extensions.py --apply
 
+# То же самое при открытом редакторе (осознанный риск, см. ниже)
+python3 scripts/dev/vscode_disable_extensions.py --apply --force
+
 # Откат из последней резервной копии
 python3 scripts/dev/vscode_disable_extensions.py --undo
 ```
@@ -120,8 +123,20 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 Скрипт берёт список из `.vscode/extensions.json` → `unwantedRecommendations`, идентификаторы
 (uuid) — из `~/.vscode/extensions/extensions.json`, каталог рабочей области находит по
 `workspaceStorage/*/workspace.json`. Перед записью создаёт копию `state.vscdb.bak-<время>`,
-а если базу держит запущенный VS Code (проверка `/proc/*/fd`) — отказывается работать с кодом
-2: редактор держит состояние в памяти и перезапишет файл.
+а если базу держит запущенный VS Code (проверка `/proc/*/fd`) — отказывается работать с кодом 2.
+
+**Про `--force`.** SQLite в VS Code обновляет ключи по отдельности, а не переписывает файл целиком,
+поэтому запись ключа `extensionsIdentifiers/disabled` переживает работу запущенного редактора:
+проверено 03.10.2026 — 52 записи сохранились через 45 секунд при открытом VS Code (pid 118746).
+Условие: редактор не должен сам перезаписать этот ключ (например, если включить расширение
+вручную в этом окне). После `--force` обязательно перезагрузи окно — **Developer: Reload Window**
+(или закрыть и открыть папку заново) и проверить `--status`.
+
+**Состояние на 03.10.2026:** в рабочей области `file:///media/mi/CC3CD24C3CD230E61/xiaozhi-esp32`
+отключены все 52 расширения из `unwantedRecommendations`; резервная копия — `state.vscdb.bak-1791008369`
+в каталоге `workspaceStorage/be3df3bf70ba690d6a13964bca876bd4`. Отдельные проектные расширения
+(`espressif.esp-idf-extension`, `clangd`, `cpptools`, `cmake-tools`, `shellcheck`, `kilo-code`,
+`lldb`) не тронуты: они не входят в список нерелевантных.
 
 **Почему не `code --disable-extension`.** Проверено 03.10.2026 на VS Code 1.140.0 при запущенном
 редакторе: команда завершается без ошибок и без вывода, но состояние
