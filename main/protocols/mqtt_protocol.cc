@@ -70,6 +70,7 @@ MqttProtocol::~MqttProtocol() {
 bool MqttProtocol::Start() { return StartMqttClient(false); }
 
 bool MqttProtocol::StartMqttClient(bool report_error) {
+    (void)report_error;  // Ошибка больше не требуется: endpoint имеет Kconfig-fallback
     if (mqtt_ != nullptr) {
         ESP_LOGW(TAG, "Mqtt client already started");
         mqtt_.reset();
@@ -84,11 +85,9 @@ bool MqttProtocol::StartMqttClient(bool report_error) {
     publish_topic_ = settings.GetString("publish_topic");
 
     if (endpoint.empty()) {
-        ESP_LOGW(TAG, "MQTT endpoint is not specified");
-        if (report_error) {
-            SetError(Lang::Strings::SERVER_NOT_FOUND);
-        }
-        return false;
+        // Fallback на российский брокер из Kconfig (адаптация под Центральную Россию)
+        endpoint = std::string(CONFIG_MQTT_DEFAULT_ENDPOINT) + ":" + std::to_string(CONFIG_MQTT_DEFAULT_PORT);
+        ESP_LOGW(TAG, "MQTT endpoint not provisioned, using Kconfig default: %s", endpoint.c_str());
     }
 
     auto network = Board::GetInstance().GetNetwork();
