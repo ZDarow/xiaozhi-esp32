@@ -44,6 +44,13 @@ idf.currentSetup = /home/mi/.espressif/v6.0.2/esp-idf
 
 Локальная версия IDF (6.0.2) ниже CI (6.1). Сборка P4/S31 локально невозможна — проверяй такие варианты только в CI или в docker-образе.
 
+При переходе на IDF 6.1 учти breaking changes: `esp-mqtt` вынесен в component manager
+(нужен `espressif/mqtt` в `main/idf_component.yml`, сейчас отсутствует); флаг DSI-панелей
+`use_dma2d` заменён на `esp_lcd_dpi_panel_enable_dma2d()` (в коде остались
+`main/boards/lilygo/t-display-p4/lilygo-t-display-p4.cc:197` и
+`main/boards/m5stack/corep4/m5stack_corep4.cc:280`); mbedTLS 4.1.0 требует переимпорта
+PSA opaque keys. Полный список — `.10x/research/third-party-ecosystem-20261003.md`.
+
 Внешние каталоги (`build/`, `managed_components/`, `components/`, `sdkconfig`, `dependencies.lock`, `releases/`) генерируются и не коммитятся.
 
 ## Architecture
@@ -118,7 +125,7 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 - **Тач и I/O:** `esp_lcd_touch_ft5x06/gt911/gt1151/cst816s/st7123`, `esp_lcd_touch_cst9217`, `esp_lcd_panel_io_additions`, `esp_io_expander_tca9554`, `esp_io_expander_tca95xx_16bit`, `custom_io_expander_ch32v003`, `m5ioe1`, `m5pm1`, `button`, `knob`, `led_strip`.
 - **UI:** `lvgl/lvgl ~9.5.0`, `esp_lvgl_port ~2.9.0`, `image_player`, `esp_emote_expression`, `esp_mmap_assets`, `esp-hub75` (S3/P4), `xpowerslib`.
 - **Аудио:** `esp_codec_dev ~1.6.2`, `esp_audio_codec ~2.5.0`, `esp_audio_effects ~1.3.0` (держи ниже P4 rev>=3.0 CMake-гейта), `esp-sr ==2.4.7`.
-- **Сеть и модемы:** `78/esp-wifi-connect ~3.3.1`, `78/esp-ml307 ~3.7.0`, `78/uart-eth-modem ~0.6.5` (не для esp32), `esp_hosted` (h2/p4), `esp_wifi_remote` (p4), `iot_usbh_rndis` (s3/p4).
+- **Сеть и модемы:** `78/esp-wifi-connect ~3.3.1`, `78/esp-ml307 ~3.7.0` (поставляет также общий сетевой слой: `http.h`, `network_interface.h`, `web_socket.h`, `udp.h`, `mqtt.h` — проверено распаковкой 3.7.3), `78/uart-eth-modem ~0.6.5` (не для esp32), `esp_hosted` (h2/p4), `esp_wifi_remote` (p4), `iot_usbh_rndis` (s3/p4).
 - **Камера и видео:** `esp32-camera` (только S3), `esp_video`, `esp_image_effects` (не esp32), `esp_new_jpeg`, `sscma_client` (SenseCAP Watcher).
 - **Питание и сенсоры:** `adc_battery_estimation`, `bq27220`, `bmi270_sensor` (S3/C5), `touch_slider_sensor`, `touch_button_sensor`.
 - **Шрифты и ассеты:** `ZDarow/xiaozhi-fonts ~2.0.0`, `sh1106-esp-idf`, `servo_dog_ctrl` (C3), `otto-emoji-gif-component` (S3).
@@ -126,6 +133,7 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 Замечания по зависимостям:
 
 - `dependencies.lock` в `.gitignore` → версии компонентов не зафиксированы в репозитории, сборка не полностью воспроизводима. Это осознанное решение upstream, не «исправляй» молча.
+- Для IDF 6.1 в `main/idf_component.yml` обязателен `espressif/mqtt`: `esp-mqtt` вынесен из состава SDK в component manager. Сейчас зависимости нет — миграция сломает сборку.
 - **19 из 62 компонентов — сторонние** (не `espressif/*` и не `lvgl/*`): `78/*` (3), `waveshare/*` (4), `m5stack/*` (2), `ZDarow/xiaozhi-fonts`, `esphome/esp-hub75`, `txp666/otto-emoji-gif-component`, `wvirgil123/sscma_client`, `tny-robotics/sh1106-esp-idf`, `espfriends/servo_dog_ctrl`, `kevincoooool/esp_lcd_st7102`, `cube32esp/xpowerslib`. Все тянутся с `github.com`, поэтому зеркала нужны для каждого источника, а не только для `78/*` и `ZDarow/*`. Инвентаризация: `main/idf_component.yml`. Замена на зеркала вида `xiaozhi-ru/*` либо приватный реестр — отдельная задача с полной пересборкой матрицы.
 - Не редактируй `managed_components/` — это вендорские выходные, они перезаписываются.
 
@@ -202,6 +210,7 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 - Настройка VS Code и CLI-команды: `docs/agent-workspace-setup.md`
 - План работ: `plans/`
 - Артефакты аудита и решений: `.10x/evidence/`, `.10x/decisions/`
+- Внешние сервисы и библиотеки: `.10x/research/third-party-ecosystem-20261003.md`
 - CI-матрица: `.github/workflows/build.yml`
 
 Держи подробную или быстро меняющуюся информацию в этих файлах, а не здесь. Добавляй вложенный `AGENTS.md` только когда подсистеме нужны специализированные инструкции.
