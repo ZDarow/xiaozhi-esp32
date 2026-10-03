@@ -93,14 +93,56 @@ code --list-extensions | grep -E 'esp-idf-extension|clangd|cpptools|clang-format
 
 ## 5. CLI-команды: отключение и удаление
 
-### 5.1. Отключение (расширение остаётся, но выключено)
+### 5.1. Отключение в области текущей рабочей папки (правильный способ)
 
-`--disable-extension` в VS Code 1.140.0 работает на уровне профиля пользователя
-(`~/.config/Code/User/globalStorage/storage.json`), то есть действует на все рабочие области.
-Флага `--disable-workspace-extensions` в этой сборке нет — для изоляции используй профиль (5.3).
+**Механизм.** VS Code хранит включённость расширений в SQLite-хранилище. Ключ один и тот же
+для обоих уровней — `extensionsIdentifiers/disabled`, значение — JSON-массив
+`{"id": "<publisher.name>", "uuid": "<идентификатор расширения>"}`:
+
+- уровень профиля: `~/.config/Code/User/globalStorage/state.vscdb` — действует на **все**
+  рабочие области профиля;
+- уровень рабочей области: `~/.config/Code/User/workspaceStorage/<id>/state.vscdb` — действует
+  **только на ту папку**, которой соответствует `<id>`.
+
+Для этого проекта нужен второй уровень. Готовый скрипт делает это безопасно:
 
 ```bash
-# Пример: отключить конкурирующие toolchain'ы и web-стек
+# Сухая проверка: показывает, что и где будет изменено
+python3 scripts/dev/vscode_disable_extensions.py
+
+# Применение: закрой VS Code, затем выполни
+python3 scripts/dev/vscode_disable_extensions.py --apply
+
+# Откат из последней резервной копии
+python3 scripts/dev/vscode_disable_extensions.py --undo
+```
+
+Скрипт берёт список из `.vscode/extensions.json` → `unwantedRecommendations`, идентификаторы
+(uuid) — из `~/.vscode/extensions/extensions.json`, каталог рабочей области находит по
+`workspaceStorage/*/workspace.json`. Перед записью создаёт копию `state.vscdb.bak-<время>`,
+а если базу держит запущенный VS Code (проверка `/proc/*/fd`) — отказывается работать с кодом
+2: редактор держит состояние в памяти и перезапишет файл.
+
+**Почему не `code --disable-extension`.** Проверено 03.10.2026 на VS Code 1.140.0 при запущенном
+редакторе: команда завершается без ошибок и без вывода, но состояние
+`extensionsIdentifiers/disabled` не меняется (31 запись до и после 34 вызовов). С ключом
+`--verbose` CLI поднимает **отдельный** экземпляр Electron (лог
+`~/.config/Code/logs/<ts>/`, попытка удалить базу с ошибкой `Database IO error`), который не
+имеет доступа к состоянию работающего окна. Вывод: применять отключения можно только к
+незапущенному редактору — через UI или через скрипт выше.
+
+Альтернатива без скрипта, если нужно «просто отключить всё» в профиле: панель Extensions →
+шестерёнка → **Disable All Installed Extensions**. Это уровень профиля, то есть затронет и
+другие проекты.
+
+### 5.2. Отключение через CLI (уровень профиля, только при закрытом редакторе)
+
+`--disable-extension` в VS Code 1.140.0 работает на уровне профиля пользователя
+(`~/.config/Code/User/globalStorage/state.vscdb`), то есть действует на все рабочие области
+профиля, включая другие проекты. Флага `--disable-workspace-extensions` в этой сборке нет.
+
+```bash
+# Только когда VS Code закрыт: иначе команда молча ничего не делает
 for ext in \
   platformio.platformio-ide \
   pioarduino.pioarduino-ide \
@@ -115,13 +157,20 @@ for ext in \
 do
   code --disable-extension "$ext"
 done
-
-# Второй IntelliSense (если выбран clangd) — отключить cpptools-набор
-code --disable-extension ms-vscode.cpptools
-code --disable-extension ms-vscode.cpp-devtools
 ```
 
-### 5.2. Удаление (освобождает место, восстанавливается через `--install-extension`)
+Проверка результата:
+
+```bash
+python3 - <<'PY'
+import json, sqlite3
+con = sqlite3.connect("file:/home/mi/.config/Code/User/globalStorage/state.vscdb?mode=ro", uri=True)
+row = con.execute("SELECT value FROM ItemTable WHERE key='extensionsIdentifiers/disabled'").fetchone()
+print("отключено в профиле:", len(json.loads(row[0])) if row and row[0] else 0)
+PY
+```
+
+### 5.3. Удаление (освобождает место, восстанавливается через `--install-extension`)
 
 Сначала прогони dry-run — команда печатает список, ничего не удаляя:
 
@@ -175,23 +224,26 @@ echo "$OPTIONAL_PY" | tr ' ' '\n' | grep -v '^$'
 # echo "$OPTIONAL_PY" | tr ' ' '\n' | grep -v '^$' | xargs -r -n1 code --uninstall-extension
 ```
 
-### 5.3. Изоляция рабочей области через профиль
+### 5.4. Изоляция рабочей области через профиль
 
-Профиль — единственный способ ограничить набор расширений одной рабочей областью
-при работе нескольких проектов на одной машине:
+Профиль — второй способ ограничить набор расширений одной рабочей областью: привязка папки к
+профилю хранится в `User/globalStorage/storage.json` → `profileAssociations.workspaces`,
+а включённость — в собственном хранилище профиля. Минус: профиль создаётся в UI, а не через CLI
+(`code --profile xiaozhi-esp32 --list-extensions` отвечает `Profile 'xiaozhi-esp32' not found.`),
+и новый профиль стартует без установленных расширений.
 
 ```bash
-# Создать профиль (интерактивно) или запустить проект в отдельном профиле
+# Запуск проекта в отдельном профиле (профиль должен уже существовать в UI)
 code --profile xiaozhi-esp32 .
 
-# Внутри профиза отключить лишнее — записи изолированы в профиле, не в User/settings.json
+# Отключение внутри профиля — работает только при закрытом редакторе (см. 5.2)
 code --profile xiaozhi-esp32 --disable-extension platformio.platformio-ide
 
 # Запуск без расширений — для чистой проверки «собирается ли проект как есть»
 code --disable-extensions --new-window .
 ```
 
-### 5.4. Разовая диагностика расширений
+### 5.5. Разовая диагностика расширений
 
 ```bash
 # Какие расширения реально активны в окне (лог GPU/расширений)
@@ -231,7 +283,15 @@ npm uninstall -g prettier eslint
 
 ## 7. Критерии готовности настройки
 
-- [ ] `code --list-extensions` не содержит `platformio`, `pioarduino`, `conan`, `redhat.java`, `vscjava.*`, `kotlin`, `spring-boot`, `dotnet`, `pylance`, `mypy-type-checker`, `black-formatter`, `ruff`, `eslint`, `prettier`, `vscode-docker`, `codespaces`, `remote-wsl`.
+Уровень рабочей области (то, что нужно этому проекту):
+
+- [ ] `python3 scripts/dev/vscode_disable_extensions.py --status` показывает 52 отключённых расширения для `file:///media/mi/CC3CD24C3CD230E61/xiaozhi-esp32`.
+- [ ] В панели Extensions (фильтр `@disabled` в этой папке) видны отключённые `platformio`, `redhat.java`, `vscjava.*`, `ms-vscode.vscode-docker` и остальные из `.vscode/extensions.json`.
+- [ ] Окно VS Code для этой папки перезапущено после применения.
+
+Уровень профиля и окружение:
+
+- [ ] `code --list-extensions` не содержит `platformio`, `pioarduino`, `conan`, `redhat.java`, `vscjava.*`, `kotlin`, `spring-boot`, `dotnet`, `pylance`, `mypy-type-checker`, `black-formatter`, `ruff`, `eslint`, `prettier`, `vscode-docker`, `codespaces`, `remote-wsl` — либо эти записи есть в списке отключённых профиля (проверяй ключ `extensionsIdentifiers/disabled`, а не `--list-extensions`).
 - [ ] `code --list-extensions | grep esp-idf-extension` возвращает `espressif.esp-idf-extension`.
 - [ ] `clang-format --version` → 18.x; `clang-format --dry-run -Werror main/ota.cc` проходит для тронутых файлов.
 - [ ] `python3 -m unittest discover -s scripts/tests` → `Ran 81 tests ... OK`.

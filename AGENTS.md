@@ -100,6 +100,16 @@ docker build -t xiaozhi-builder -f docker/firmware-builder/Dockerfile .
 docker run --rm -v "$PWD/out:/output" xiaozhi-builder main/boards/espressif/esp32s3 --name esp32s3
 ```
 
+Отключение нерелевантных расширений VS Code в области этой рабочей папки
+(пишет ключ `extensionsIdentifiers/disabled` в `workspaceStorage`, поэтому применимо
+только при закрытом редакторе; подробности — в `docs/agent-workspace-setup.md`):
+
+```sh
+python3 scripts/dev/vscode_disable_extensions.py --status
+python3 scripts/dev/vscode_disable_extensions.py --apply
+python3 scripts/dev/vscode_disable_extensions.py --undo
+```
+
 ## Dependencies
 
 Управляемые через `main/idf_component.yml` компоненты (сокращённо, полный список — в файле):
