@@ -126,7 +126,7 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 Замечания по зависимостям:
 
 - `dependencies.lock` в `.gitignore` → версии компонентов не зафиксированы в репозитории, сборка не полностью воспроизводима. Это осознанное решение upstream, не «исправляй» молча.
-- Компоненты `78/*` и `ZDarow/*` тянутся с `github.com`. Для Центральной России нужны зеркала: либо заменить на `xiaozhi-ru/*` (см. TODO в `main/idf_component.yml`), либо настроить `idf_component.yml` через приватный реестр. Правка требует отдельной задачи и полной пересборки.
+- **19 из 62 компонентов — сторонние** (не `espressif/*` и не `lvgl/*`): `78/*` (3), `waveshare/*` (4), `m5stack/*` (2), `ZDarow/xiaozhi-fonts`, `esphome/esp-hub75`, `txp666/otto-emoji-gif-component`, `wvirgil123/sscma_client`, `tny-robotics/sh1106-esp-idf`, `espfriends/servo_dog_ctrl`, `kevincoooool/esp_lcd_st7102`, `cube32esp/xpowerslib`. Все тянутся с `github.com`, поэтому зеркала нужны для каждого источника, а не только для `78/*` и `ZDarow/*`. Инвентаризация: `main/idf_component.yml`. Замена на зеркала вида `xiaozhi-ru/*` либо приватный реестр — отдельная задача с полной пересборкой матрицы.
 - Не редактируй `managed_components/` — это вендорские выходные, они перезаписываются.
 
 ## Required Rules
@@ -163,6 +163,13 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 5. **`.vscode/` в `.gitignore`, но `.vscode/extensions.json` отслеживается** (добавлен через `git add -f`, коммит `12e4f83`). Расхождение намеренное: список расширений общий, `settings.json` с локальным путём `idf.currentSetup` остаётся неотслеживаемым. Не добавляй `.vscode/settings.json` в индекс.
 6. **Ассеты и озвучка версионируются в открытых местах.** `main/assets/` и `scripts/spiffs_assets/` содержат бинарные модели; любая правка меняет размер образа и лимит раздела — проверяй `python3 scripts/build.py ...` и тесты ассетов.
 7. **`main/ota.cc` не соответствует `.clang-format` целиком** (предсуществующее состояние, проверено clang-format 18.1.3: нарушения на строках с `cJSON *`, длине строк, `Ota::~Ota()`). CI проверяет только дифф (`clang-format-diff-18 -p1`), поэтому это не ломает сборку. Не форматируй файл целиком в рамках посторонней задачи: это создаст diff на ~600 строк. Проверяй только свои строки: `git diff -U0 -- '*.cc' '*.h' | clang-format-diff-18 -p1 -style=file`.
+8. **Данные от сервера приводят к аварийному останову** (аудит 03.10.2026, `.10x/evidence/audit-20261003.md`):
+   - `std::stoi` в `main/ota.cc:435` и `main/protocols/mqtt_protocol.cc:154` вызывается на строке из JSON-ответа OTA-сервера, а исключения выключены (`CONFIG_COMPILER_CXX_EXCEPTIONS=n`) → `abort()` → перезагрузка. Отдельно: `main/audio/audio_debugger.cc:25`.
+   - `Settings::SetString`/`SetInt` (`main/settings.cc:53`, `:74`) вызывают `ESP_ERROR_CHECK`; ключи берутся из ответа сервера без фильтрации (`main/ota.cc:180-190`, `:202-212`), а `NVS_KEY_NAME_MAX_SIZE = 16` → ключ длиннее 15 символов или заполненный namespace дают `ESP_ERR_INVALID_ARG`/нет места → panic.
+   До исправления не отправляй на сервер нестандартные значения `firmware.version` и ключей `mqtt`/`websocket`.
+9. **Образ прошивки качается без проверки подписи и без контроля схемы URL**: `main/ota.cc:249-252` принимает любой `firmware.url`, `Upgrade()` (`:296`) пишет образ и переключает загрузку; `esp_ota_end` проверяет только целостность. Компромеция OTA-эндпоинта = подмена прошивки и конфигурации разделов `mqtt`/`websocket` (связано с п. 8).
+10. **Секреты в логах:** `main/ota.cc:493` печатает весь активационный payload вместе с `serial_number` и `hmac`; `main/ota.cc:80` печатает `Serial-Number`. Маскируй значения при логировании.
+11. **Китайский сервис в документации для пользователей:** `https://xiaozhi.me/` остался в `.github/ISSUE_TEMPLATE/01_build_flash_bug.yml:9`, `02_runtime_bug.yml:9` и `:42`, `03_feature_request.yml:9`, `05_technical_question.yml:9`, `config.yml:7`, `.github/SUPPORT.md:49`. Поддержка переведена на `support@xiaozhi.ru`, сайт — нет.
 
 ## Boards and Configuration
 
@@ -194,6 +201,7 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 - Протоколы: `docs/websocket.md`, `docs/mqtt-udp.md`, `docs/mcp-protocol.md`
 - Настройка VS Code и CLI-команды: `docs/agent-workspace-setup.md`
 - План работ: `plans/`
+- Артефакты аудита и решений: `.10x/evidence/`, `.10x/decisions/`
 - CI-матрица: `.github/workflows/build.yml`
 
 Держи подробную или быстро меняющуюся информацию в этих файлах, а не здесь. Добавляй вложенный `AGENTS.md` только когда подсистеме нужны специализированные инструкции.
