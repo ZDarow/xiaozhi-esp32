@@ -3,6 +3,7 @@
 #include "board.h"
 #include "cjson_utils.h"
 #include "settings.h"
+#include "string_utils.h"
 
 #include <esp_log.h>
 #include <arpa/inet.h>
@@ -151,7 +152,13 @@ bool MqttProtocol::StartMqttClient(bool report_error) {
     size_t pos = endpoint.find(':');
     if (pos != std::string::npos) {
         broker_address = endpoint.substr(0, pos);
-        broker_port = std::stoi(endpoint.substr(pos + 1));
+        if (!ParseInt(endpoint.substr(pos + 1), broker_port, 1, 65535)) {
+            ESP_LOGE(TAG, "Invalid port in MQTT endpoint: %s", endpoint.c_str());
+            if (report_error) {
+                SetError(Lang::Strings::SERVER_NOT_FOUND);
+            }
+            return false;
+        }
     } else {
         broker_address = endpoint;
     }

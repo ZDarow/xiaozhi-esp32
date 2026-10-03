@@ -1,6 +1,7 @@
 #include "ota.h"
 #include "system_info.h"
 #include "settings.h"
+#include "string_utils.h"
 #include "assets/lang_config.h"
 #include "cjson_utils.h"
 
@@ -17,6 +18,7 @@
 #include <esp_app_format.h>
 #include <esp_system.h>
 #include <esp_err.h>
+#include <string_view>
 #ifdef SOC_HMAC_SUPPORTED
 #include <esp_hmac.h>
 #endif
@@ -27,11 +29,36 @@
 
 #include <cstring>
 #include <vector>
-#include <sstream>
 #include <algorithm>
 
 #define TAG "Ota"
 
+namespace {
+
+// Протоколы читают из NVS фиксированный набор ключей (docs/mqtt-udp.md, раздел 6.1;
+// docs/websocket.md). Ключи из ответа сервера пишем только из этого списка:
+// иначе сервер может заполнить namespace, записать ключ длиннее предела NVS или
+// подменить значения, которые устройство не ожидает.
+const std::vector<std::string_view> kAllowedMqttKeys = {"endpoint", "client_id", "username",
+                                                        "password", "keepalive", "publish_topic"};
+
+const std::vector<std::string_view> kAllowedWebsocketKeys = {"url", "token", "version"};
+
+bool IsAllowedServerKey(const char* key, const std::vector<std::string_view>& allowed) {
+    if (key == nullptr) {
+        return false;
+    }
+    std::string_view name(key);
+    for (std::string_view candidate : allowed) {
+        if (name == candidate) {
+            return true;
+        }
+    }
+    ESP_LOGW(TAG, "Ignoring unexpected key in OTA response: %s", key);
+    return false;
+}
+
+}  // namespace
 
 Ota::Ota() {
 #ifdef ESP_EFUSE_BLOCK_USR_DATA
@@ -178,6 +205,9 @@ NetworkResult<> Ota::CheckVersion() {
         Settings settings("mqtt", true);
         cJSON *item = NULL;
         cJSON_ArrayForEach(item, mqtt) {
+            if (!IsAllowedServerKey(item->string, kAllowedMqttKeys)) {
+                continue;
+            }
             if (cJSON_IsString(item)) {
                 if (settings.GetString(item->string) != item->valuestring) {
                     settings.SetString(item->string, item->valuestring);
@@ -199,6 +229,9 @@ NetworkResult<> Ota::CheckVersion() {
         Settings settings("websocket", true);
         cJSON *item = NULL;
         cJSON_ArrayForEach(item, websocket) {
+            if (!IsAllowedServerKey(item->string, kAllowedWebsocketKeys)) {
+                continue;
+            }
             if (cJSON_IsString(item)) {
                 if (settings.GetString(item->string) != item->valuestring) {
                     settings.SetString(item->string, item->valuestring);
@@ -428,13 +461,28 @@ bool Ota::StartUpgrade(std::function<void(int progress, size_t speed)> callback)
 
 std::vector<int> Ota::ParseVersion(const std::string& version) {
     std::vector<int> versionNumbers;
-    std::stringstream ss(version);
-    std::string segment;
-    
-    while (std::getline(ss, segment, '.')) {
-        versionNumbers.push_back(std::stoi(segment));
+    size_t start = 0;
+
+    // Сегменты разбираем строго: пустой сегмент или нечисловой ("1.x", "latest")
+    // означают некорректный ответ сервера, а не ноль.
+    while (start <= version.size()) {
+        size_t dot = version.find('.', start);
+        std::string segment =
+            dot == std::string::npos ? version.substr(start) : version.substr(start, dot - start);
+
+        int value = 0;
+        if (!ParseInt(segment, value, 0, 999999)) {
+            ESP_LOGW(TAG, "Malformed version string: %s", version.c_str());
+            return {};
+        }
+        versionNumbers.push_back(value);
+
+        if (dot == std::string::npos) {
+            break;
+        }
+        start = dot + 1;
     }
-    
+
     return versionNumbers;
 }
 

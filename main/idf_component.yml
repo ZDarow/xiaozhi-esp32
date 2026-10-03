@@ -23,6 +23,9 @@ dependencies:
   # TODO: заменить на xiaozhi-ru/* после создания форков.
   78/esp_lcd_nv3023: ==1.0.1
   78/esp-wifi-connect: ~3.3.1
+  # ESP-IDF 6.1: esp-mqtt вынесен из состава SDK в component manager.
+  # Требуемая версия IDF для компонента — >=5.3, поэтому совместим и с 6.0.x.
+  espressif/mqtt: ^1.1.0
   # Stay below the P4 rev>=3.0 CMake gate until rev-1.x boards are retired.
   espressif/esp_audio_effects: ~1.3.0
   espressif/esp_audio_codec: ~2.5.0

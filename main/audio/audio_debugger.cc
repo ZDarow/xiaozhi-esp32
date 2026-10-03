@@ -9,6 +9,8 @@
 #include <esp_log.h>
 #include <string>
 #include <unistd.h>
+
+#include "string_utils.h"
 #endif
 
 #define TAG "AudioDebugger"
@@ -22,7 +24,14 @@ AudioDebugger::AudioDebugger() {
 
         if (colon_pos != std::string::npos) {
             std::string ip = server_addr.substr(0, colon_pos);
-            int port = std::stoi(server_addr.substr(colon_pos + 1));
+            int port = 0;
+            if (!ParseInt(server_addr.substr(colon_pos + 1), port, 1, 65535)) {
+                ESP_LOGW(TAG, "Invalid port in %s, expected IP:PORT",
+                         CONFIG_AUDIO_DEBUG_UDP_SERVER);
+                close(udp_sockfd_);
+                udp_sockfd_ = -1;
+                return;
+            }
 
             memset(&udp_server_addr_, 0, sizeof(udp_server_addr_));
             udp_server_addr_.sin_family = AF_INET;
