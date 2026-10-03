@@ -1,3 +1,13 @@
+# Проверка подписи образа в формате ГОСТ 2012 в этой ветке не реализована:
+# прототип вынесен в feature/gost-crypto (не проходит тестовые векторы RFC 6986).
+# Останавливаем конфигурацию явно, чтобы падение было понятным, а не ошибкой include.
+if(CONFIG_USE_GOST_CRYPTO)
+    message(FATAL_ERROR
+        "CONFIG_USE_GOST_CRYPTO=y не поддерживается: проверка подписи OTA в формате "
+        "ГОСТ 2012 не реализована (прототип — ветка feature/gost-crypto). "
+        "Соберите прошивку без этой опции.")
+endif()
+
 # Define source files
 set(SOURCES "audio/audio_codec.cc"
             "audio/audio_debugger.cc"

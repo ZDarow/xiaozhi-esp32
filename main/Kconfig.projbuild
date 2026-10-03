@@ -44,17 +44,21 @@ config ASSETS_GENERATOR_URL
         URL for the custom assets generator (wake words, fonts, emojis, backgrounds).
 
 config USE_GOST_CRYPTO
-    bool "Enable GOST 2012 Cryptography"
+    bool "Enable GOST 2012 Cryptography (NOT IMPLEMENTED)"
     default n
     help
-        Enable GOST 2012 (TC 26) cryptography for TLS and OTA signature verification.
-        Requires additional flash and RAM.
+        NOT IMPLEMENTED in this branch: enabling it stops the CMake configure
+        with a FATAL_ERROR. The prototype of GOST R 34.11-2012 hashing and
+        GOST R 34.10-2012 signature verification lives in branch
+        feature/gost-crypto and does not pass RFC 6986 test vectors.
+        See main/gost_crypto/README.md in that branch.
 
 config OTA_SIGNATURE_PUBKEY
     string "OTA Signature Public Key (PEM)"
     default ""
     help
-        Public key for verifying OTA image signatures (GOST 2012). Empty = no verification.
+        Public key for verifying OTA image signatures (GOST 2012). Empty = no
+        verification. Unused while USE_GOST_CRYPTO is disabled.
 
 choice
     prompt "Flash Assets"

@@ -21,10 +21,9 @@
 #include <esp_hmac.h>
 #endif
 
-// Поддержка ГОСТ 2012 (опционально, включается через CONFIG_USE_GOST_CRYPTO)
-#ifdef CONFIG_USE_GOST_CRYPTO
-#include <esp_gost.h>
-#endif
+// Проверка подписи образа в формате ГОСТ 2012 в этом дереве не реализована:
+// прототип вынесен в ветку feature/gost-crypto. Включение CONFIG_USE_GOST_CRYPTO
+// останавливает конфигурацию в main/CMakeLists.txt с явным сообщением.
 
 #include <cstring>
 #include <vector>
@@ -534,18 +533,3 @@ esp_err_t Ota::Activate() {
     ESP_LOGI(TAG, "Activation successful");
     return ESP_OK;
 }
-
-#ifdef CONFIG_USE_GOST_CRYPTO
-bool Ota::VerifyGostSignature(const std::string& firmware_path) {
-    // TODO: Интеграция с ГОСТ 2012 (Р 34.10-2012) через mbedTLS/PSA.
-    // Требует:
-    // 1. Публичный ключ из CONFIG_OTA_SIGNATURE_PUBKEY (PEM/DER)
-    // 2. Подпись в конце файла прошивки (отдельный сегмент или .sig)
-    // 3. Хэш ГОСТ Р 34.11-2012 (256/512 бит) от образа
-    // 4. Проверка подписи через ГОСТ Р 34.10-2012
-    //
-    // Это заглушка — реализация требует внешней ГОСТ-библиотеки для ESP-IDF.
-    ESP_LOGW(TAG, "GOST signature verification not yet implemented");
-    return true;  // Пассивный fallback: пропуск проверки
-}
-#endif
