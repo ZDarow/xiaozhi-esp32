@@ -1,0 +1,84 @@
+command=["/opt/esp/python_env/idf6.1_py3.12_env/bin/python3", "scripts/build.py", "espressif/esp32-s3-box-3", "--name", "esp-box-3", "--language", "zh-CN", "--wake-word", "nihaoxiaozhi", "--build-options-json", "{}"]
+[WARN] Ambiguous board config for lilygo/t-cameraplus-s3 (target=esp32s3), target-matched candidates=['CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_0_V1_1', 'CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_2'], selecting first: CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_0_V1_1
+Project Version: 2.5.0 (main/boards/espressif/esp32-s3-box-3/config.json)
+--------------------------------------------------------------------------------
+name: espressif-esp-box-3
+reported_name: esp-box-3
+reported_type: esp-box-3
+target: esp32s3
+manufacturer: espressif
+language: zh-CN
+wake_word: wn9_nihaoxiaozhi_tts
+build_options: {"aec_mode": "device", "display_style": "default", "multiline_chat": false, "wifi_provisioning": "hotspot"}
+sdkconfig_append: CONFIG_BOARD_TYPE_ESP32_S3_BOX_3=y
+sdkconfig_append: CONFIG_USE_DEVICE_AEC=y
+sdkconfig_append: CONFIG_LANGUAGE_ZH_CN=y
+sdkconfig_append: CONFIG_SR_WN_WN9_NIHAOXIAOZHI_TTS=y
+sdkconfig_append: CONFIG_WAKE_WORD_DISABLED=n
+sdkconfig_append: CONFIG_USE_ESP_WAKE_WORD=n
+sdkconfig_append: CONFIG_USE_AFE_WAKE_WORD=y
+sdkconfig_append: CONFIG_USE_CUSTOM_WAKE_WORD=n
+sdkconfig_append: CONFIG_USE_DEFAULT_MESSAGE_STYLE=y
+sdkconfig_append: CONFIG_USE_WECHAT_MESSAGE_STYLE=n
+sdkconfig_append: CONFIG_USE_EMOTE_MESSAGE_STYLE=n
+sdkconfig_append: CONFIG_USE_MULTILINE_CHAT_MESSAGE=n
+sdkconfig_append: CONFIG_USE_SERVER_AEC=n
+sdkconfig_append: CONFIG_USE_AUDIO_PROCESSOR=y
+sdkconfig_append: CONFIG_USE_HOTSPOT_WIFI_PROVISIONING=y
+sdkconfig_append: CONFIG_USE_ESP_BLUFI_WIFI_PROVISIONING=n
+[INFO] Configuring target esp32s3.
+Executing action: reconfigure
+Running cmake in directory /opt/xiaozhi-esp32/build
+Executing "cmake -G Ninja -B /opt/xiaozhi-esp32/build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=/opt/esp/python_env/idf6.1_py3.12_env/bin/python3 -DESP_PLATFORM=1 -DIDF_TARGET=esp32s3 -DSDKCONFIG_DEFAULTS=sdkconfig.defaults;build/xiaozhi-build.sdkconfig.defaults -DBOARD_NAME=esp-box-3 -DCCACHE_ENABLE=True /opt/xiaozhi-esp32"...
+-- Found Git: /usr/bin/git (found version "2.43.0")
+-- Minimal build - ON
+-- ccache will be used for faster recompilation
+-- The C compiler identification is GNU 15.2.0
+-- The CXX compiler identification is GNU 15.2.0
+-- The ASM compiler identification is GNU
+-- Found assembler: /opt/esp/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /opt/esp/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /opt/esp/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32s3-elf-g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Building ESP-IDF components for target esp32s3
+NOTE: Dependencies lock doesn't exist, solving dependencies.
+NOTE: Skipping optional dependency: espressif/esp_lcd_jd9365
+NOTE: Skipping optional dependency: waveshare/esp_lcd_hx8394
+NOTE: Skipping optional dependency: waveshare/esp_lcd_st7703
+NOTE: Skipping optional dependency: espressif/esp_lcd_ili9881c
+NOTE: Skipping optional dependency: espressif/esp_lcd_ek79007
+NOTE: Skipping optional dependency: espressif/esp_hosted
+NOTE: Skipping optional dependency: espressif/esp_wifi_remote
+NOTE: Skipping optional dependency: espfriends/servo_dog_ctrl
+NOTE: Skipping optional dependency: espressif/touch_slider_sensor
+NOTE: Skipping optional dependency: espressif/touch_button_sensor
+NOTE: Skipping optional dependency: kevincoooool/esp_lcd_st7102
+.......................................................................NOTE: Skipping optional dependency: espressif/esp_h264
+NOTE: Skipping optional dependency: espressif/esp_ipa
+...............................................HINT: Please check manifest file of the following component(s): main
+CMake Error at /opt/esp/idf/tools/cmake/build.cmake:707 (message):
+  WARNING: Component "zdarow/xiaozhi-fonts" not found
+
+  ERROR: Version solving failed:
+
+      - no versions of zdarow/xiaozhi-fonts match ~2.0.0
+      - project depends on zdarow/xiaozhi-fonts (~2.0.0)
+
+  Result: Because project depends on zdarow/xiaozhi-fonts (~2.0.0) which
+  doesn't match any versions, version solving failed.
+
+Call Stack (most recent call first):
+  /opt/esp/idf/tools/cmake/project.cmake:868 (idf_build_process)
+  CMakeLists.txt:13 (project)
+
+
+-- Configuring incomplete, errors occurred!
+cmake failed with exit code 1, output of the command is in the /opt/xiaozhi-esp32/build/log/idf_py_stderr_output_176 and /opt/xiaozhi-esp32/build/log/idf_py_stdout_output_176
+/opt/esp/python_env/idf6.1_py3.12_env/bin/python3 /opt/esp/idf/tools/idf.py -DIDF_TARGET=esp32s3 -DSDKCONFIG_DEFAULTS=sdkconfig.defaults;build/xiaozhi-build.sdkconfig.defaults -DBOARD_NAME=esp-box-3 reconfigure failed

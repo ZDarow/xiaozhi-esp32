@@ -1,0 +1,85 @@
+# Усечённый лог сборки waveshare/esp32-touch-lcd-3.5 (IDF 6.1, 04.10.2026)
+# Полный лог не коммитится: 314 КБ построчного прогресса.
+# Всего строк в полном логе: 2775; строк с "error:": 0
+# Артефакты и их sha256 — в docker-build-waveshare-esp32-touch-lcd-3.5-20261004.manifest.json
+
+## Начало: конфигурация
+command=["/opt/esp/python_env/idf6.1_py3.12_env/bin/python3", "scripts/build.py", "waveshare/esp32-touch-lcd-3.5", "--name", "esp32-touch-lcd-3.5", "--language", "zh-CN", "--wake-word", "disabled", "--build-options-json", "{}"]
+[WARN] Ambiguous board config for lilygo/t-cameraplus-s3 (target=esp32s3), target-matched candidates=['CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_0_V1_1', 'CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_2'], selecting first: CONFIG_BOARD_TYPE_LILYGO_T_CAMERAPLUS_S3_V1_0_V1_1
+Project Version: 2.5.0 (main/boards/waveshare/esp32-touch-lcd-3.5/config.json)
+--------------------------------------------------------------------------------
+name: waveshare-esp32-touch-lcd-3.5
+reported_name: esp32-touch-lcd-3.5
+reported_type: esp32-touch-lcd-3.5
+target: esp32
+manufacturer: waveshare
+language: zh-CN
+wake_word: disabled
+build_options: {"display_style": "default", "multiline_chat": false, "wifi_provisioning": "hotspot"}
+sdkconfig_append: CONFIG_BOARD_TYPE_WAVESHARE_ESP32_TOUCH_LCD_3_5=y
+sdkconfig_append: CONFIG_LANGUAGE_ZH_CN=y
+sdkconfig_append: CONFIG_SR_WN_WN9_NIHAOXIAOZHI_TTS=n
+sdkconfig_append: CONFIG_WAKE_WORD_DISABLED=y
+sdkconfig_append: CONFIG_USE_ESP_WAKE_WORD=n
+sdkconfig_append: CONFIG_USE_AFE_WAKE_WORD=n
+sdkconfig_append: CONFIG_USE_CUSTOM_WAKE_WORD=n
+sdkconfig_append: CONFIG_USE_DEFAULT_MESSAGE_STYLE=y
+sdkconfig_append: CONFIG_USE_WECHAT_MESSAGE_STYLE=n
+sdkconfig_append: CONFIG_USE_MULTILINE_CHAT_MESSAGE=n
+sdkconfig_append: CONFIG_USE_HOTSPOT_WIFI_PROVISIONING=y
+sdkconfig_append: CONFIG_USE_ESP_BLUFI_WIFI_PROVISIONING=n
+[INFO] Configuring target esp32.
+Executing action: reconfigure
+Running cmake in directory /opt/xiaozhi-esp32/build
+Executing "cmake -G Ninja -B /opt/xiaozhi-esp32/build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=/opt/esp/python_env/idf6.1_py3.12_env/bin/python3 -DESP_PLATFORM=1 -DIDF_TARGET=esp32 -DSDKCONFIG_DEFAULTS=sdkconfig.defaults;build/xiaozhi-build.sdkconfig.defaults -DBOARD_NAME=esp32-touch-lcd-3.5 -DCCACHE_ENABLE=True /opt/xiaozhi-esp32"...
+-- Found Git: /usr/bin/git (found version "2.43.0")
+-- Minimal build - ON
+-- ccache will be used for faster recompilation
+-- The C compiler identification is GNU 15.2.0
+-- The CXX compiler identification is GNU 15.2.0
+-- The ASM compiler identification is GNU
+-- Found assembler: /opt/esp/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /opt/esp/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32-elf-gcc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /opt/esp/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin/xtensa-esp32-elf-g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+
+## Конец: сборка завершена
+or from the "/opt/xiaozhi-esp32/build" directory
+ python -m esptool --chip esp32 -b 460800 --before default-reset --after hard-reset write-flash "@flash_args"
+Adding "merge-bin"'s dependency "all" to list of commands with default set of options.
+Executing action: all (aliases: build)
+Running ninja in directory /opt/xiaozhi-esp32/build
+Executing "ninja all"...
+[0/2] Re-checking globbed directories...
+[1/4] cd /opt/xiaozhi-esp32/build && /opt/esp/python_env/idf6.1_py3.12_env/bin/python3 /opt/esp/idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /opt/xiaozhi-esp32/build/partition_table/partition-table.bin /opt/xiaozhi-esp32/build/xiaozhi.bin
+xiaozhi.bin binary size 0x221fb0 bytes. Smallest app partition is 0x2f0000 bytes. 0xce050 bytes (27%) free.
+[2/4] Performing build step for 'bootloader'
+[1/1] cd /opt/xiaozhi-esp32/build/bootloader && /opt/esp/python_env/idf6.1_py3.12_env/bin/python3 /opt/esp/idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 /opt/xiaozhi-esp32/build/bootloader/bootloader.bin
+Bootloader binary size 0x4f80 bytes. 0x2080 bytes (29%) free.
+[3/4] No install step for 'bootloader'
+[4/4] Completed 'bootloader'
+Executing action: merge-bin
+Merged binary merged-binary.bin will be created in the build directory...
+Running merge-bin in directory /opt/xiaozhi-esp32/build
+Executing "/opt/esp/python_env/idf6.1_py3.12_env/bin/python3 -m esptool --chip esp32 merge-bin -o merged-binary.bin -f raw @flash_args"...
+esptool --chip esp32 merge-bin -o merged-binary.bin -f raw --flash-mode dio --flash-freq 40m --flash-size 4MB 0x1000 bootloader/bootloader.bin 0x8000 partition_table/partition-table.bin 0xd000 ota_data_initial.bin 0x300000 generated_assets.bin 0x10000 xiaozhi.bin
+esptool v5.4.0
+HINT: Consider using --format hex to avoid flashing unused 0xFF padding between input regions.
+SHA digest in image updated.
+Wrote 0x3e170d bytes to file 'merged-binary.bin', ready to flash to offset 0x0.
+
+Project build complete. To flash, run:
+ idf.py flash
+or
+ idf.py -p PORT flash
+or
+ python -m esptool --chip esp32 -b 460800 --before default-reset --after hard-reset write-flash --flash-mode dio --flash-size 4MB --flash-freq 40m 0x1000 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0xd000 build/ota_data_initial.bin 0x10000 build/xiaozhi.bin 0x300000 build/generated_assets.bin
+or from the "/opt/xiaozhi-esp32/build" directory
+ python -m esptool --chip esp32 -b 460800 --before default-reset --after hard-reset write-flash "@flash_args"
