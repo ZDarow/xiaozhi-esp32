@@ -59,7 +59,7 @@ Running ninja in directory /opt/xiaozhi-esp32/build
 Executing "ninja all"...
 [0/2] Re-checking globbed directories...
 [1/4] cd /opt/xiaozhi-esp32/build && /opt/esp/python_env/idf6.1_py3.12_env/bin/python3 /opt/esp/idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /opt/xiaozhi-esp32/build/partition_table/partition-table.bin /opt/xiaozhi-esp32/build/xiaozhi.bin
-xiaozhi.bin binary size 0x221fb0 bytes. Smallest app partition is 0x2f0000 bytes. 0xce050 bytes (27%) free.
+xiaozhi.bin binary size 0x222110 bytes. Smallest app partition is 0x2f0000 bytes. 0xcdef0 bytes (27%) free.
 [2/4] Performing build step for 'bootloader'
 [1/1] cd /opt/xiaozhi-esp32/build/bootloader && /opt/esp/python_env/idf6.1_py3.12_env/bin/python3 /opt/esp/idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 /opt/xiaozhi-esp32/build/bootloader/bootloader.bin
 Bootloader binary size 0x4f80 bytes. 0x2080 bytes (29%) free.

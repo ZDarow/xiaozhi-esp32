@@ -190,6 +190,14 @@ python3 scripts/dev/vscode_disable_extensions.py --undo
 18. **Порядок инициализации полей в `i2c_device.cc` — закрыто 04.10.2026:** список инициализации не совпадал с порядком объявления полей, а сборка идёт с `-Werror`, поэтому `-Werror=reorder` останавливал компиляцию **любой** платы, использующей `I2cDevice`. Список приведён в порядок объявления.
 19. **Первый полный цикл сборки пройден 04.10.2026 (P2-12, частично):** плата `waveshare/esp32-touch-lcd-3.5` (чистый `esp32`) собрана в docker на `espressif/idf:release-v6.1` — `exit_code: 0`, 0 ошибок, 0 предупреждений. Артефакты с sha256: `.10x/evidence/docker-build-waveshare-esp32-touch-lcd-3.5-20261004.manifest.json`. Цели `not in [esp32]` остаются непроверенными из-за п. 20 (P1-11). Успешная сборка ≠ валидация железа.
 20. **`78/uart-uhci` 0.3.3 несовместим с IDF 6.1 (открыто 04.10.2026, P1-11):** компонент вызывает `gdma_get_alignment_constraints`, удалённый в IDF 6.1 в пользу `gdma_get_channel_alignment_constraints`. Подключается только для целей `not in [esp32]`, поэтому падает вся матрица кроме чистого `esp32`. В реестре есть `78/uart-uhci` 0.4.0, но его тянет `78/uart-eth-modem 0.6.5` (`~0.6.5` в манифесте); `uart-eth-modem` 0.7.0 существует, но его переход не проверен и затрагивает платы с UART-Ethernet. Не обновляй молча: это отдельная задача с проверкой железа. Подробности — в `.10x/evidence/audit-20261003.md`.
+21. **Upstream содержит неприемлемые правки — закрыто частично 04.10.2026 (P1-14):** на `origin/feature/russia-adaptation` есть merge `abe9fb8` с коммитом `032778c` от `qwen.ai[bot]`, который очищает `.gitignore` целиком, возвращает заглушку `VerifyGostSignature()` и коммитит `.pyc`. Слияние целиком отклонено: оно вернуло бы в историю очищенный `.gitignore`. Полезная часть (проверка схемы OTA-URL, опция `ALLOW_OTA_ENV_OVERRIDE`, фолбэки эндпоинтов) перенесена вручную. Не смержи этот merge целиком без отдельного решения владельца.
+
+## Сетевые адреса и provisioning
+
+- `CONFIG_OTA_URL` — адрес проверки версии; переопределяется NVS-ключом `ota_url`. Принимается только `https://`; `http://` разрешён исключительно в отладочных сборках (`CONFIG_COMPILER_OPTIMIZATION_DEBUG`). Проверка живёт в `IsSafeOtaUrl()` в `main/ota.cc` — не обходи её, вызывая URL напрямую.
+- Переопределение через переменную окружения `OTA_URL` закрыто опцией `ALLOW_OTA_ENV_OVERRIDE` (по умолчанию `n`). На ESP-IDF `getenv()` всё равно возвращает `nullptr`, но гейт не даёт собрать dev-обход в релиз.
+- При пустом NVS протоколы берут адрес из Kconfig: `CONFIG_MQTT_DEFAULT_ENDPOINT`, `CONFIG_MQTT_DEFAULT_PORT`, `CONFIG_WEBSOCKET_DEFAULT_ENDPOINT`. Не возвращай на жёсткий отказ `SERVER_NOT_FOUND` без явной причины.
+- Регрессии: `test_ota_url_scheme_is_validated`, `test_ota_env_override_is_opt_in`, `test_protocol_endpoints_fall_back_to_kconfig` в `scripts/tests/test_server_input_hardening.py`.
 
 ## Boards and Configuration
 
