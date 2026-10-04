@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Эта форма предназначена для открытой прошивки устройства. Для отвязки устройства отправьте личное письмо на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Device%20unbinding%20request) с идентификатором устройства и MAC-адресом. Для других запросов аккаунта и облачных сервисов используйте [веб-сайт XiaoZhi AI](https://xiaozhi.me/).
+        Эта форма предназначена для открытой прошивки устройства. Для отвязки устройства отправьте личное письмо на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Device%20unbinding%20request) с идентификатором устройства и MAC-адресом. Для других запросов аккаунта и облачных сервисов пишите на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Cloud%20services%20request).
 
   - type: checkboxes
     id: checklist
@@ -39,7 +39,7 @@ body:
     attributes:
       label: Источник или имя файла прошивки
       description: Укажите, откуда взята прошивка, и включите имя файла или целевую плату при наличии.
-      placeholder: ex. xiaozhi.me, GitHub release echoear.bin, self-built target df-k10, или vendor firmware
+      placeholder: ex. 2.5.0, GitHub release echoear.bin, self-built target df-k10, или vendor firmware
     validations:
       required: true
 

@@ -303,6 +303,62 @@ int main() {
         manifest = OTA_IDF_YML.read_text(encoding="utf-8")
         self.assertRegex(manifest, r"espressif/mqtt")
 
+    def test_mask_secret_hides_middle(self):
+        """Маскирование должно оставлять только края, но не само секретное значение."""
+        source = OTA_CC.read_text(encoding="utf-8")
+        body = extract_method(source, "std::string MaskSecret(")
+        harness = HELPERS + (
+            "#include <string>\n\n"
+            "@BODY@\n\n"
+            r"""
+int main() {
+    struct {
+        const char* input;
+        const char* expected;
+    } cases[] = {
+        {"", "********"},
+        {"1234567", "********"},
+        {"12345678", "********"},
+        {"123456789", "1234****6789"},
+        {"0123456789abcdef", "0123****cdef"},
+    };
+    for (const auto& c : cases) {
+        std::string got = MaskSecret(c.input);
+        if (got != c.expected) {
+            std::printf("FAIL MaskSecret('%s') = '%s', expected '%s'\n", c.input, got.c_str(),
+                        c.expected);
+            return 1;
+        }
+    }
+    // Секрет длиной больше 8 символов не должен попадать в лог целиком.
+    std::string secret = "0123456789abcdef";
+    if (MaskSecret(secret) == secret) {
+        std::printf("FAIL: значение не замаскировано\n");
+        return 1;
+    }
+    return 0;
+}
+"""
+        ).replace("@BODY@", body)
+        result = run_harness("", harness)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_secrets_are_not_logged_verbatim(self):
+        """Серийный номер и HMAC не должны печататься целиком (P1-4)."""
+        source = OTA_CC.read_text(encoding="utf-8")
+        offenders = [
+            line.strip()
+            for line in source.splitlines()
+            if "ESP_LOG" in line
+            and (
+                "serial_number_.c_str()" in line
+                or ("payload" in line and "json.c_str()" in line)
+                or "activation_challenge_.c_str()" in line
+            )
+        ]
+        self.assertEqual(offenders, [], f"Секреты печатаются в лог: {offenders}")
+        self.assertIn("MaskSecret", source)
+
 
 if __name__ == "__main__":
     unittest.main()

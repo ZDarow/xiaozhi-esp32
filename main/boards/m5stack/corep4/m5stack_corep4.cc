@@ -300,6 +300,9 @@ private:
         panel_config.vendor_config = &vendor_config;
 
         ESP_ERROR_CHECK(esp_lcd_new_panel_st7102(io, &panel_config, &panel));
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+        ESP_ERROR_CHECK(esp_lcd_dpi_panel_enable_dma2d(panel));
+#endif
         ESP_ERROR_CHECK(esp_lcd_panel_reset(panel));
         ESP_ERROR_CHECK(esp_lcd_panel_init(panel));
         ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel, true));

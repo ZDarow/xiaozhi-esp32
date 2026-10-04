@@ -44,6 +44,15 @@ const std::vector<std::string_view> kAllowedMqttKeys = {"endpoint", "client_id",
 
 const std::vector<std::string_view> kAllowedWebsocketKeys = {"url", "token", "version"};
 
+// Серийный номер и HMAC активации нельзя печатать целиком: значения попадают в
+// HTTP-заголовок и тело запроса, а логи уходят в консоль и в Issue-шаблоны.
+std::string MaskSecret(const std::string& value) {
+    if (value.size() <= 8) {
+        return "********";
+    }
+    return value.substr(0, 4) + "****" + value.substr(value.size() - 4);
+}
+
 bool IsAllowedServerKey(const char* key, const std::vector<std::string_view>& allowed) {
     if (key == nullptr) {
         return false;
@@ -104,7 +113,8 @@ std::unique_ptr<Http> Ota::SetupHttp() {
     http->SetHeader("Client-Id", board.GetUuid());
     if (has_serial_number_) {
         http->SetHeader("Serial-Number", serial_number_.c_str());
-        ESP_LOGI(TAG, "Setup HTTP, User-Agent: %s, Serial-Number: %s", user_agent.c_str(), serial_number_.c_str());
+        ESP_LOGI(TAG, "Setup HTTP, User-Agent: %s, Serial-Number: %s", user_agent.c_str(),
+                 MaskSecret(serial_number_).c_str());
     }
     http->SetHeader("User-Agent", user_agent);
     http->SetHeader("Accept-Language", Lang::CODE);
@@ -538,7 +548,10 @@ std::string Ota::GetActivationPayload() {
         cJSON_free(json_str);
     }
 
-    ESP_LOGI(TAG, "Activation payload: %s", json.c_str());
+    // Тело payload содержит serial_number и hmac, поэтому в лог идёт только длина,
+    // алгоритм и маскированный HMAC.
+    ESP_LOGI(TAG, "Activation payload prepared: %u bytes, algorithm=hmac-sha256, hmac=%s",
+             static_cast<unsigned>(json.size()), MaskSecret(hmac_hex).c_str());
     return json;
 }
 

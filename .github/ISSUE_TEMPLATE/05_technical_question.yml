@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Эта форма предназначена для технических вопросов об открытой прошивке. Для отвязки устройства отправьте личное письмо на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Device%20unbinding%20request) с идентификатором устройства и MAC-адресом. Другие запросы аккаунта и облачных сервисов отправляйте на [веб-сайт XiaoZhi AI](https://xiaozhi.me/).
+        Эта форма предназначена для технических вопросов об открытой прошивке. Для отвязки устройства отправьте личное письмо на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Device%20unbinding%20request) с идентификатором устройства и MAC-адресом. Другие запросы аккаунта и облачных сервисов отправляйте на [support@xiaozhi.ru](mailto:support@xiaozhi.ru?subject=Cloud%20services%20request).
 
   - type: checkboxes
     id: checklist

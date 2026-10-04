@@ -9,8 +9,9 @@
 #include "esp_lcd_mipi_dsi.h"
 #include "esp_ldo_regulator.h"
 
-#include <esp_log.h>
 #include <driver/i2c_master.h>
+#include <esp_idf_version.h>
+#include <esp_log.h>
 #include <esp_lvgl_port.h>
 
 #include "cpp_bus_driver_library.h"
@@ -193,10 +194,12 @@ public:
                 .vsync_back_porch = SCREEN_MIPI_DSI_VBP,
                 .vsync_front_porch = SCREEN_MIPI_DSI_VFP,
             },
-            .flags = {
-                .use_dma2d = true, // use DMA2D to copy draw buffer into frame buffer
-            }
         };
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)
+        // use DMA2D to copy draw buffer into frame buffer; в IDF 6.0 флаг заменён
+        // на esp_lcd_dpi_panel_enable_dma2d() после создания панели.
+        dpi_config.flags.use_dma2d = true;
+#endif
 
 #if defined CONFIG_SCREEN_TYPE_HI8561
         hi8561_vendor_config_t vendor_config = {
@@ -230,6 +233,9 @@ public:
 #error "unknown macro definition, please select the correct macro definition."
 #endif
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+        ESP_ERROR_CHECK(esp_lcd_dpi_panel_enable_dma2d(mipi_dpi_panel_));
+#endif
         esp_lcd_panel_init(mipi_dpi_panel_);
 
 #if defined CONFIG_SCREEN_TYPE_HI8561
