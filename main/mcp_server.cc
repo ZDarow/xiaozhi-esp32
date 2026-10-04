@@ -20,6 +20,22 @@
 
 #define TAG "MCP"
 
+namespace {
+
+// Входящее MCP-сообщение не ограничено по длине и может содержать пользовательские данные,
+// поэтому в лог попадает только префикс фиксированного размера.
+constexpr size_t kLoggedMessagePrefix = 128;
+
+std::string MessageForLog(const std::string& message) {
+    if (message.size() <= kLoggedMessagePrefix) {
+        return message;
+    }
+    return message.substr(0, kLoggedMessagePrefix) + "... (truncated, total " +
+           std::to_string(message.size()) + " bytes)";
+}
+
+}  // namespace
+
 McpServer::McpServer() {}
 
 McpServer::~McpServer() = default;
@@ -330,7 +346,7 @@ void McpServer::AddUserOnlyTool(const std::string& name, const std::string& desc
 void McpServer::ParseMessage(const std::string& message, ResponseSender response_sender) {
     CJsonUniquePtr json(cJSON_Parse(message.c_str()));
     if (json == nullptr) {
-        ESP_LOGE(TAG, "Failed to parse MCP message: %s", message.c_str());
+        ESP_LOGE(TAG, "Failed to parse MCP message: %s", MessageForLog(message).c_str());
         return;
     }
     ParseMessage(json.get(), std::move(response_sender));

@@ -3,8 +3,9 @@
 Проверяет то, что обычный ответ сервера не может вызвать аварийный останов:
 
 * `main/string_utils.h` — строгий разбор целого без исключений;
-* `main/ota.cc` — `ParseVersion` и белый список ключей NVS;
-* `main/settings.cc` — отсутствие `ESP_ERROR_CHECK` на путях записи.
+* `main/ota.cc` — `ParseVersion`, белый список ключей NVS, `MaskSecret`;
+* `main/settings.cc` — отсутствие `ESP_ERROR_CHECK` на путях записи;
+* `main/mcp_server.cc` — усечение входящего сообщения перед логированием.
 
 Логика C++ собирается и запускается на хосте; для `ParseVersion` и
 `IsAllowedServerKey` исходник извлекается из файлов, чтобы тест ловил регрессии
@@ -23,7 +24,13 @@ STRING_UTILS = ROOT / "main" / "string_utils.h"
 OTA_CC = ROOT / "main" / "ota.cc"
 SETTINGS_CC = ROOT / "main" / "settings.cc"
 SETTINGS_H = ROOT / "main" / "settings.h"
+MCP_SERVER_CC = ROOT / "main" / "mcp_server.cc"
 OTA_IDF_YML = ROOT / "main" / "idf_component.yml"
+BOARDS_DIR = ROOT / "main" / "boards"
+PANEL_HEADERS = (
+    BOARDS_DIR / "m5stack" / "tab5" / "esp_lcd_st7123.h",
+    BOARDS_DIR / "m5stack" / "tab5" / "esp_lcd_st7121.h",
+)
 
 # Собираются без ESP-IDF: нужны только стандартные заголовки.
 HELPERS = r"""
@@ -152,6 +159,23 @@ def extract_namespace_block(source: str) -> str:
     start = source.find("namespace {")
     if start < 0:
         raise AssertionError("Не найден анонимный namespace в main/ota.cc")
+    brace = source.find("{", start)
+    depth = 0
+    for index in range(brace, len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1:index]
+    raise AssertionError("Не найден конец анонимного namespace")
+
+
+def extract_anonymous_namespace(source: str) -> str:
+    """Вырезает содержимое первого анонимного namespace с явными границами."""
+    start = source.find("namespace {")
+    if start < 0:
+        raise AssertionError("Не найден анонимный namespace")
     brace = source.find("{", start)
     depth = 0
     for index in range(brace, len(source)):
@@ -358,6 +382,88 @@ int main() {
         ]
         self.assertEqual(offenders, [], f"Секреты печатаются в лог: {offenders}")
         self.assertIn("MaskSecret", source)
+
+    def test_mcp_message_log_is_truncated(self):
+        """Сырое MCP-сообщение не должно уходить в лог целиком (P1-5)."""
+        source = MCP_SERVER_CC.read_text(encoding="utf-8")
+        offenders = [
+            line.strip()
+            for line in source.splitlines()
+            if "ESP_LOG" in line and "message.c_str()" in line
+        ]
+        self.assertEqual(offenders, [], f"Сырое MCP-сообщение печатается в лог: {offenders}")
+        self.assertIn("MessageForLog", source)
+
+        block = extract_anonymous_namespace(source)
+        self.assertIn("kLoggedMessagePrefix", block)
+        harness = HELPERS + (
+            "#include <string>\n#include <cstddef>\n\n"
+            "@BLOCK@\n\n"
+            r"""
+int main() {
+    std::string long_message(1000, 'x');
+    std::string got = MessageForLog(long_message);
+    if (got.size() >= long_message.size()) {
+        std::printf("FAIL: длинное сообщение не усечено, размер %d\n", (int)got.size());
+        return 1;
+    }
+    if (got.find("truncated") == std::string::npos || got.find("1000") == std::string::npos) {
+        std::printf("FAIL: в усечённом сообщении нет отметки об усечении и длины: %s\n",
+                    got.c_str());
+        return 1;
+    }
+    std::string short_message = "{\"method\":\"ping\"}";
+    if (MessageForLog(short_message) != short_message) {
+        std::printf("FAIL: короткое сообщение изменено\n");
+        return 1;
+    }
+    if (MessageForLog("").size() != 0) {
+        std::printf("FAIL: пустое сообщение изменено\n");
+        return 1;
+    }
+    return 0;
+}
+"""
+        ).replace("@BLOCK@", block)
+        result = run_harness("", harness)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_use_dma2d_is_guarded_by_idf_version(self):
+        """Флаг .flags.use_dma2d удалён из ESP-IDF 6.0, обращения должны быть под защитой версии."""
+        for path in PANEL_HEADERS:
+            with self.subTest(path=path.name):
+                self.assertTrue(path.exists(), f"Отсутствует {path}")
+                lines = path.read_text(encoding="utf-8").splitlines()
+                guard_depth = 0
+                offenders = []
+                for number, line in enumerate(lines, start=1):
+                    if line.startswith("#if ESP_IDF_VERSION"):
+                        guard_depth += 1
+                        continue
+                    if line.startswith("#endif") and guard_depth > 0:
+                        guard_depth -= 1
+                        continue
+                    # Документация может упоминать флаг — проверяем только код.
+                    if "use_dma2d" in line and guard_depth == 0 and "*" not in line.split(
+                            "use_dma2d")[0]:
+                        offenders.append(f"{path.name}:{number}: {line.strip()}")
+                self.assertEqual(offenders, [], f"Обращения к use_dma2d вне защиты: {offenders}")
+                # Макрос ESP_IDF_VERSION_VAL недоступен без этого заголовка.
+                self.assertIn('#include "esp_idf_version.h"', lines)
+
+    def test_dsi_boards_enable_dma2d_on_modern_idf(self):
+        """Панели DSI включают DMA2D вызовом esp_lcd_dpi_panel_enable_dma2d, а не старым флагом."""
+        boards = (
+            BOARDS_DIR / "lilygo" / "t-display-p4" / "lilygo-t-display-p4.cc",
+            BOARDS_DIR / "m5stack" / "corep4" / "m5stack_corep4.cc",
+        )
+        for path in boards:
+            with self.subTest(path=path.name):
+                source = path.read_text(encoding="utf-8")
+                self.assertIn("esp_lcd_dpi_panel_enable_dma2d", source)
+                self.assertIn("#include <esp_idf_version.h>", source)
+                # Старый флаг допустим только внутри защиты версии.
+                self.assertIn("#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)", source)
 
 
 if __name__ == "__main__":
