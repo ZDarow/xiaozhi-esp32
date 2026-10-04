@@ -86,6 +86,13 @@ bool WebsocketProtocol::OpenAudioChannel() {
         version_ = version;
     }
 
+    if (url.empty()) {
+        // Сервер не прислал адрес — используем адрес из Kconfig, чтобы устройство
+        // оставалось рабочим при неполной provisioning-прошивке.
+        url = CONFIG_WEBSOCKET_DEFAULT_ENDPOINT;
+        ESP_LOGW(TAG, "Websocket url is not provisioned, using Kconfig default: %s", url.c_str());
+    }
+
     error_occurred_ = false;
 
     auto network = Board::GetInstance().GetNetwork();

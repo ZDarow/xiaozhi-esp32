@@ -489,6 +489,86 @@ int main() {
             body.count("heap_caps_free(buffer)"), 4, "Буфер освобождается не во всех путях отказа"
         )
 
+    def test_ota_url_scheme_is_validated(self):
+        """Схема OTA-URL проверяется до запроса: подпись и HTTPS — разные вещи."""
+        source = OTA_CC.read_text(encoding="utf-8")
+        function = extract_method(source, "static bool IsSafeOtaUrl(")
+        self.assertIn('starts("https://")', function)
+
+        body = extract_method(source, "std::string Ota::GetCheckVersionUrl(")
+        self.assertIn("IsSafeOtaUrl", body, "URL из NVS не проверяется на схему")
+        # Оба источника переопределения обязаны проходить через проверку.
+        self.assertEqual(
+            body.count("IsSafeOtaUrl("),
+            2,
+            "Ожидались проверки схемы для env и для NVS",
+        )
+
+        harness = HELPERS + ("\n" + function + "\n") + r"""
+int main() {
+    struct {
+        const char* url;
+        bool expected;
+    } cases[] = {
+        {"https://ota.xiaozhi.ru/xiaozhi/ota/", true},
+        {"https://example.com", true},
+        {"http://ota.xiaozhi.ru/xiaozhi/ota/", false},
+        {"wss://ws.xiaozhi.ru", false},
+        {"file:///etc/passwd", false},
+        {"ftp://example.com", false},
+        {"", false},
+        // Схема должна распознаваться только в начале строки.
+        {" https://example.com", false},
+        {"xhttps://example.com", false},
+    };
+    for (const auto& test : cases) {
+        bool got = IsSafeOtaUrl(test.url);
+        if (got != test.expected) {
+            std::printf("FAIL: %s -> %d, ожидалось %d\n", test.url, (int)got,
+                        (int)test.expected);
+            return 1;
+        }
+    }
+    return 0;
+}
+"""
+        result = run_harness(source, harness)
+        self.assertEqual(result.returncode, 0, f"Проверка схемы URL провалилась: {result.stdout}")
+
+    def test_ota_env_override_is_opt_in(self):
+        """Переопределение OTA_URL через окружение включается только явно."""
+        source = OTA_CC.read_text(encoding="utf-8")
+        body = extract_method(source, "std::string Ota::GetCheckVersionUrl(")
+        self.assertIn("#ifdef CONFIG_ALLOW_OTA_ENV_OVERRIDE", body)
+        getenv_pos = body.find("getenv(")
+        gate_pos = body.find("#ifdef CONFIG_ALLOW_OTA_ENV_OVERRIDE")
+        self.assertGreaterEqual(getenv_pos, 0, "Чтение OTA_URL из окружения исчезло")
+        self.assertLess(gate_pos, getenv_pos, "getenv должен быть под гейтом")
+
+        kconfig = (ROOT / "main" / "Kconfig.projbuild").read_text(encoding="utf-8")
+        self.assertIn("config ALLOW_OTA_ENV_OVERRIDE", kconfig)
+        # Опция по умолчанию выключена: иначе dev-обход попадёт в релиз.
+        default_block = kconfig.split("config ALLOW_OTA_ENV_OVERRIDE", 1)[1][:400]
+        self.assertIn("default n", default_block)
+
+    def test_protocol_endpoints_fall_back_to_kconfig(self):
+        """Пустой адрес от сервера не должен оставлять устройство без сервера."""
+        mqtt = (ROOT / "main" / "protocols" / "mqtt_protocol.cc").read_text(encoding="utf-8")
+        ws = (ROOT / "main" / "protocols" / "websocket_protocol.cc").read_text(encoding="utf-8")
+        self.assertIn("CONFIG_MQTT_DEFAULT_ENDPOINT", mqtt)
+        self.assertIn("CONFIG_MQTT_DEFAULT_PORT", mqtt)
+        self.assertIn("CONFIG_WEBSOCKET_DEFAULT_ENDPOINT", ws)
+        # Порт по умолчанию больше не зашит числом в коде.
+        self.assertNotRegex(mqtt, r"int broker_port\s*=\s*\d+;")
+
+        kconfig = (ROOT / "main" / "Kconfig.projbuild").read_text(encoding="utf-8")
+        for symbol in (
+            "config MQTT_DEFAULT_ENDPOINT",
+            "config MQTT_DEFAULT_PORT",
+            "config WEBSOCKET_DEFAULT_ENDPOINT",
+        ):
+            self.assertIn(symbol, kconfig)
+
 
 if __name__ == "__main__":
     unittest.main()

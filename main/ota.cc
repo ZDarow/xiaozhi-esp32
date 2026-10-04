@@ -87,17 +87,44 @@ Ota::Ota() {
 Ota::~Ota() {
 }
 
+// Проверка схемы OTA-URL. Подпись образа и HTTPS — не одно и то же: сервер может
+// отдать корректный ответ по http://, и тогда трафик подделывается по дороге.
+// Поэтому схема проверяется до любого запроса, независимо от настроек подписи.
+static bool IsSafeOtaUrl(const std::string& url) {
+    auto starts = [&url](const char* prefix) { return url.rfind(prefix, 0) == 0; };
+    if (starts("https://")) {
+        return true;
+    }
+#ifdef CONFIG_COMPILER_OPTIMIZATION_DEBUG
+    // http допускается только в отладочных сборках (локальная разработка).
+    if (starts("http://")) {
+        return true;
+    }
+#endif
+    return false;
+}
+
 std::string Ota::GetCheckVersionUrl() {
-    // 1. Проверка env-переменной OTA_URL (для локальной сборки и Центральной России)
+#ifdef CONFIG_ALLOW_OTA_ENV_OVERRIDE
+    // 1. Переменная окружения OTA_URL — только для отладочных сборок. В release
+    //    getenv() на ESP32 всё равно возвращает nullptr, но явный гейт не даёт
+    //    случайно собрать dev-обход в релиз.
     const char* env_url = getenv("OTA_URL");
     if (env_url != nullptr && strlen(env_url) > 10) {
-        return std::string(env_url);
+        if (IsSafeOtaUrl(env_url)) {
+            return std::string(env_url);
+        }
+        ESP_LOGE(TAG, "OTA_URL from environment rejected: only https allowed");
     }
-    // 2. Проверка NVS-ключа ota_url (runtime override)
+#endif
+    // 2. NVS-ключ ota_url (runtime override)
     Settings settings("wifi", false);
     std::string url = settings.GetString("ota_url");
     if (!url.empty()) {
-        return url;
+        if (IsSafeOtaUrl(url)) {
+            return url;
+        }
+        ESP_LOGE(TAG, "NVS ota_url rejected: only https allowed, using Kconfig default");
     }
     // 3. Fallback на Kconfig
     return CONFIG_OTA_URL;

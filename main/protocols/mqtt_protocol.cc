@@ -86,7 +86,16 @@ bool MqttProtocol::StartMqttClient(bool report_error) {
     publish_topic_ = settings.GetString("publish_topic");
 
     if (endpoint.empty()) {
-        ESP_LOGW(TAG, "MQTT endpoint is not specified");
+        // Сервер не прислал адрес брокера — используем адрес из Kconfig, чтобы
+        // устройство оставалось рабочим при неполной provisioning-прошивке.
+        endpoint = CONFIG_MQTT_DEFAULT_ENDPOINT;
+        ESP_LOGW(TAG, "MQTT endpoint is not provisioned, using Kconfig default: %s",
+                 endpoint.c_str());
+    }
+
+    if (endpoint.empty()) {
+        // Адреса нет ни в NVS, ни в Kconfig — подключаться некуда.
+        ESP_LOGE(TAG, "MQTT endpoint is not specified and Kconfig default is empty");
         if (report_error) {
             SetError(Lang::Strings::SERVER_NOT_FOUND);
         }
@@ -148,7 +157,7 @@ bool MqttProtocol::StartMqttClient(bool report_error) {
     });
 
     std::string broker_address;
-    int broker_port = 8883;
+    int broker_port = CONFIG_MQTT_DEFAULT_PORT;
     size_t pos = endpoint.find(':');
     if (pos != std::string::npos) {
         broker_address = endpoint.substr(0, pos);
