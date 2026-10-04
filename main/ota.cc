@@ -371,6 +371,15 @@ bool Ota::Upgrade(const std::string& firmware_url, std::function<void(int progre
         ESP_LOGE(TAG, "Failed to get content length");
         return false;
     }
+    // Образ должен помещаться в раздел обновления: иначе esp_ota_write выйдет за его
+    // границы и запись будет повреждена либо прошивка не запустится после активации.
+    const size_t partition_size = update_partition->size;
+    if (content_length > partition_size) {
+        ESP_LOGE(TAG, "Firmware image too large: %u bytes, partition %s holds %u bytes",
+                 static_cast<unsigned>(content_length), update_partition->label,
+                 static_cast<unsigned>(partition_size));
+        return false;
+    }
 
     constexpr size_t PAGE_SIZE = 4096;
     char* buffer = (char*)heap_caps_malloc(PAGE_SIZE, MALLOC_CAP_INTERNAL);
@@ -390,6 +399,16 @@ bool Ota::Upgrade(const std::string& firmware_url, std::function<void(int progre
             return false;
         }
         int n = *ret;
+
+        // Сервер может отдать больше данных, чем объявлено в Content-Length: без этой
+        // проверки лишние байты уйдут за пределы раздела обновления.
+        if (total_read + static_cast<size_t>(n) > content_length) {
+            ESP_LOGE(TAG, "Firmware body longer than Content-Length: got %u bytes, declared %u",
+                     static_cast<unsigned>(total_read + n), static_cast<unsigned>(content_length));
+            esp_ota_abort(update_handle);
+            heap_caps_free(buffer);
+            return false;
+        }
 
         // Calculate speed and progress every second
         recent_read += n;
@@ -562,6 +581,10 @@ esp_err_t Ota::Activate() {
     }
 
     std::string url = GetCheckVersionUrl();
+    if (url.empty()) {
+        ESP_LOGE(TAG, "Check version URL is empty");
+        return ESP_FAIL;
+    }
     if (url.back() != '/') {
         url += "/activate";
     } else {

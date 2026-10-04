@@ -465,6 +465,30 @@ int main() {
                 # Старый флаг допустим только внутри защиты версии.
                 self.assertIn("#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(6, 0, 0)", source)
 
+    def test_activation_url_is_checked_before_back(self):
+        """P2-8: url.back() на пустой строке не определён, проверка обязана предшествовать."""
+        source = OTA_CC.read_text(encoding="utf-8")
+        body = extract_method(source, "esp_err_t Ota::Activate(")
+        empty_check = body.find("url.empty()")
+        back_call = body.find("url.back()")
+        self.assertGreaterEqual(empty_check, 0, "В Ota::Activate нет проверки url.empty()")
+        self.assertGreaterEqual(back_call, 0, "В Ota::Activate нет вызова url.back()")
+        self.assertLess(empty_check, back_call, "Проверка url.empty() должна идти до url.back()")
+
+    def test_firmware_size_is_bounded_by_partition(self):
+        """P2-9: образ не должен быть больше раздела обновления."""
+        source = OTA_CC.read_text(encoding="utf-8")
+        body = extract_method(source, "bool Ota::Upgrade(")
+        # Проверка объявленного размера против размера раздела.
+        self.assertIn("update_partition->size", body)
+        self.assertRegex(body, r"content_length\s*>\s*\w*partition_size")
+        # Защита от тела длиннее Content-Length: иначе запись выйдет за раздел.
+        self.assertRegex(body, r"total_read\s*\+\s*static_cast<size_t>\(n\)\s*>\s*content_length")
+        # Оба отказа обязаны освобождать буфер и прерывать запись.
+        self.assertGreaterEqual(
+            body.count("heap_caps_free(buffer)"), 4, "Буфер освобождается не во всех путях отказа"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
