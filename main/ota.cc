@@ -258,7 +258,7 @@ NetworkResult<> Ota::CheckVersion() {
     }
 
     has_server_time_ = false;
-    cJSON *server_time = cJSON_GetObjectItem(root, "server_time");
+    cJSON* server_time = cJSON_GetObjectItem(root.get(), "server_time");
     if (cJSON_IsObject(server_time)) {
         cJSON *timestamp = cJSON_GetObjectItem(server_time, "timestamp");
         cJSON *timezone_offset = cJSON_GetObjectItem(server_time, "timezone_offset");
@@ -283,7 +283,7 @@ NetworkResult<> Ota::CheckVersion() {
     }
 
     has_new_version_ = false;
-    cJSON *firmware = cJSON_GetObjectItem(root, "firmware");
+    cJSON* firmware = cJSON_GetObjectItem(root.get(), "firmware");
     if (cJSON_IsObject(firmware)) {
         cJSON *version = cJSON_GetObjectItem(firmware, "version");
         if (cJSON_IsString(version)) {
@@ -312,7 +312,8 @@ NetworkResult<> Ota::CheckVersion() {
         ESP_LOGW(TAG, "No firmware section found!");
     }
 
-    cJSON_Delete(root);
+    // root освобождается деструктором CJsonUniquePtr; явный cJSON_Delete был бы
+    // двойным освобождением.
     return {};
 }
 

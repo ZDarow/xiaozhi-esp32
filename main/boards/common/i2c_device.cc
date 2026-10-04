@@ -7,7 +7,7 @@
 #define TAG "I2cDevice"
 
 I2cDevice::I2cDevice(i2c_master_bus_handle_t i2c_bus, uint8_t addr)
-    : i2c_bus_(i2c_bus), device_address_(addr), i2c_device_(nullptr) {
+    : i2c_bus_(i2c_bus), i2c_device_(nullptr), device_address_(addr) {
     i2c_device_config_t i2c_device_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = addr,

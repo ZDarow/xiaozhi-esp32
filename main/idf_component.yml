@@ -36,8 +36,11 @@ dependencies:
     version: ~0.6.5
     rules:
     - if: target not in [esp32]
-  # NOTE: требует форка на xiaozhi-ru/* для адаптации под Центральную Россию.
-  ZDarow/xiaozhi-fonts: ~2.0.0
+  # ВНИМАНИЕ: форк ZDarow/xiaozhi-fonts не создан (404 на GitHub и в реестре ESP),
+  # из-за чего сборка падала на этапе version solving для любой платы. Оригинал
+  # 78/xiaozhi-fonts в реестре есть, версия 2.0.0 доступна. Возврат на ZDarow/*
+  # или xiaozhi-ru/* — только после создания форка.
+  78/xiaozhi-fonts: ~2.0.0
   espressif/led_strip: ~3.0.3
   espressif/esp_codec_dev: ~1.6.2
   espressif/esp-sr: ==2.4.7
